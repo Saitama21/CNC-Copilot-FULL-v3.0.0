@@ -277,14 +277,28 @@ function getLocal() { return window.CNC_APP?.getSyncPayload?.() || {}; }
 function keyForTool(tool) {
   return tool.canonicalKey || [tool.insert, tool.grade, tool.breaker, tool.nose].map(x => String(x || '').toUpperCase().replace(/\W/g, '')).join('|') || tool.id;
 }
+function newerMark(a, b) {
+  if (!a) return b || null;
+  if (!b) return a;
+  const ta = Date.parse(a.at || 0) || 0, tb = Date.parse(b.at || 0) || 0;
+  return tb >= ta ? b : a;
+}
+function mergeMarkMap(remote = {}, local = {}) {
+  const out = { ...remote };
+  for (const [key, mark] of Object.entries(local || {})) out[key] = newerMark(out[key], mark);
+  return out;
+}
 function merge(local, remote) {
   const out = { ...remote, ...local };
+  const toolMarks = mergeMarkMap(remote.syncMarks?.tools, local.syncMarks?.tools);
+  const projectMarks = mergeMarkMap(remote.syncMarks?.projects, local.syncMarks?.projects);
   const tools = new Map();
   for (const tool of [...(remote.tools || []), ...(local.tools || [])]) tools.set(keyForTool(tool), tool);
-  out.tools = [...tools.values()];
+  out.tools = [...tools.entries()].filter(([key]) => !toolMarks[key]?.deleted).map(([, tool]) => tool);
   const projects = new Map();
   for (const project of [...(remote.projects || []), ...(local.projects || [])]) projects.set(project.id || project.name, project);
-  out.projects = [...projects.values()];
+  out.projects = [...projects.entries()].filter(([key]) => !projectMarks[key]?.deleted).map(([, project]) => project);
+  out.syncMarks = { tools: toolMarks, projects: projectMarks };
   out.machine = local.machine || remote.machine;
   out.draft = local.draft || remote.draft;
   return out;
@@ -376,7 +390,7 @@ $('#runScanner')?.addEventListener('click', event => {
   }
 }, true);
 window.addEventListener('cnc-local-data-changed', event => {
-  if (['cncFullMachineV1', 'cncFullToolsV2', 'cncFullProjectsV1'].includes(event.detail?.key)) scheduleSync();
+  if (['cncFullMachineV1', 'cncFullToolsV2', 'cncFullProjectsV1', 'cncFullSyncMarksV1'].includes(event.detail?.key)) scheduleSync();
 });
 window.addEventListener('online', () => { if (connected) renderCloudPanel(); });
 window.addEventListener('offline', () => {

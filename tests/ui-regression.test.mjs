@@ -18,7 +18,7 @@ test('v3 exposes explicit local and online modes', () => {
 
 test('local core never routes API requests through service worker', () => {
   assert.match(sw, /pathname\.startsWith\('\/api\/'\)/);
-  assert.match(sw, /cnc-copilot-full-v302/);
+  assert.match(sw, /cnc-copilot-full-v303/);
 });
 
 test('AI scan is blocked until online mode is explicitly enabled', () => {
@@ -41,6 +41,19 @@ test('smart cupboard and projects are included in cloud sync payload', () => {
   assert.match(app, /tools\s*:\s*store\.get\(KEYS\.tools/);
   assert.match(app, /projects\s*:\s*store\.get\(KEYS\.projects/);
   assert.match(cloud, /function merge\(local,\s*remote\)/);
+});
+
+
+
+test('удаление инструмента и проекта синхронизируется как удаление, а не воскресает из облака', () => {
+  assert.match(app, /syncMarks:'cncFullSyncMarksV1'/);
+  assert.match(app, /markToolSync\(t,true\)/);
+  assert.match(app, /markProjectSync\(id,true\)/);
+  assert.match(app, /syncMarks:store\.get\(KEYS\.syncMarks/);
+  assert.match(cloud, /function mergeMarkMap\(remote = \{\}, local = \{\}\)/);
+  assert.match(cloud, /!toolMarks\[key\]\?\.deleted/);
+  assert.match(cloud, /!projectMarks\[key\]\?\.deleted/);
+  assert.match(cloud, /cncFullSyncMarksV1/);
 });
 
 test('adaptive bottom dock from FULL 1.1.2 is preserved', () => {

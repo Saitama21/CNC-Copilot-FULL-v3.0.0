@@ -12,7 +12,7 @@ const store = {
   get(k,fallback){ try{ const v=localStorage.getItem(k); return v ? JSON.parse(v) : fallback; }catch{return fallback;} },
   set(k,v){ try{ localStorage.setItem(k,JSON.stringify(v)); window.dispatchEvent(new CustomEvent('cnc-local-data-changed',{detail:{key:k}})); return true; }catch(e){ console.warn('CNC Copilot storage write failed',e); return false; } }
 };
-const KEYS={machine:'cncFullMachineV1',tools:'cncFullToolsV2',projects:'cncFullProjectsV1',draft:'cncFullDraftV2',theme:'cncThemeMode'};
+const KEYS={machine:'cncFullMachineV1',tools:'cncFullToolsV2',projects:'cncFullProjectsV1',draft:'cncFullDraftV2',theme:'cncThemeMode',syncMarks:'cncFullSyncMarksV1'};
 
 const themeMedia=matchMedia('(prefers-color-scheme: light)');
 const themeModes=['system','light','dark'];
@@ -73,16 +73,22 @@ function transition(fn){if(document.startViewTransition){document.startViewTrans
 function saveDraft(){const copy=deep(state);copy.results=[];store.set(KEYS.draft,copy)}
 function allTools(){return [...D.tools.map(t=>({...t,libraryType:'catalog',quantity:t.quantity||null,location:t.location||'',photos:t.photos||{}})),...store.get(KEYS.tools,[]).map(t=>normalizeTool(t))]}
 function projects(){return store.get(KEYS.projects,[])}
-function saveProjects(v){store.set(KEYS.projects,v);renderProjects()}
+function saveProjects(v){markExistingProjectsActive(v);store.set(KEYS.projects,v);renderProjects()}
 function material(){return D.materials.find(x=>x.id===state.materialId)||D.materials[0]}
 function operation(id){return D.operations.find(x=>x.id===id)}
 function opLabel(id){return operation(id)?.name||({rough:'Черновая',finish:'Чистовая'}[id]||id)}
 function normalizeCode(v){return String(v||'').toUpperCase().replace(/[\s_\-./]+/g,'').replace(/[^A-Z0-9]/g,'')}
 function canonicalToolKey(t){const raw=t?.nose,nose=(raw!==''&&raw!=null&&Number.isFinite(+raw))?Number(raw).toFixed(2):'';return [normalizeCode(t.insert),normalizeCode(t.grade),normalizeCode(t.breaker),nose].join('|')}
+function syncToolKey(t){return t?.canonicalKey||canonicalToolKey(t)||t?.id||''}
+function syncMarks(){const m=store.get(KEYS.syncMarks,{tools:{},projects:{}});return {tools:(m&&typeof m.tools==='object'&&m.tools)||{},projects:(m&&typeof m.projects==='object'&&m.projects)||{}}}
+function markToolSync(t,deleted){const key=syncToolKey(t);if(!key)return;const m=syncMarks();m.tools[key]={deleted:!!deleted,at:new Date().toISOString()};store.set(KEYS.syncMarks,m)}
+function markProjectSync(id,deleted){if(!id)return;const m=syncMarks();m.projects[id]={deleted:!!deleted,at:new Date().toISOString()};store.set(KEYS.syncMarks,m)}
+function markExistingToolsActive(list){const m=syncMarks(),now=new Date().toISOString();for(const t of list){const key=syncToolKey(t);if(key)m.tools[key]={deleted:false,at:now}}store.set(KEYS.syncMarks,m)}
+function markExistingProjectsActive(list){const m=syncMarks(),now=new Date().toISOString();for(const p of list){const key=p?.id||p?.name;if(key)m.projects[key]={deleted:false,at:now}}store.set(KEYS.syncMarks,m)}
 function normalizeTool(t){const iso=Array.isArray(t.iso)?t.iso:[t.iso||'P'];const ops=Array.isArray(t.ops)?t.ops:['face','od'];return {...t,id:t.id||('local-'+uid()),iso,ops,passes:Array.isArray(t.passes)&&t.passes.length?t.passes:['rough','finish','single'],quantity:Math.max(0,(t.quantity===null||t.quantity===undefined||t.quantity==='')?1:(Number.isFinite(+t.quantity)?+t.quantity:1)),location:t.location||'',libraryType:t.libraryType||'cupboard',photos:t.photos||{},canonicalKey:t.canonicalKey||canonicalToolKey(t),source:t.source||'Мой шкаф',verified:t.verified??true,art:t.art||{shape:shapeFromInsert(t.insert),tone:'steel'}}}
 function shapeFromInsert(insert){const c=String(insert||'').trim().toUpperCase()[0];return ({W:'wnmg',C:'ccmt',D:'dcmt',M:'mgmn',T:'thread'}[c]||'wnmg')}
 function cupboardTools(){return store.get(KEYS.tools,[]).map(t=>normalizeTool(t))}
-function saveCupboard(list){const ok=store.set(KEYS.tools,list.map(normalizeTool));if(!ok){toast('Не хватило локальной памяти. Уменьши фото или удали старые карточки.');return false}renderTools();renderRoute();renderProcessToolTray();return true}
+function saveCupboard(list){const normalized=list.map(normalizeTool);markExistingToolsActive(normalized);const ok=store.set(KEYS.tools,normalized);if(!ok){toast('Не хватило локальной памяти. Уменьши фото или удали старые карточки.');return false}renderTools();renderRoute();renderProcessToolTray();return true}
 function materialAccentKey(m=material()){if(['pa6','pom'].includes(m.id))return m.id==='pa6'?'polymer':'polymer2';return m.iso}
 function applyMaterialTheme(){const m=material(),root=document.documentElement;root.dataset.iso=m.iso;root.dataset.material=m.id;root.dataset.accent=materialAccentKey(m);}
 function toolUseText(t){const ids=(t.ops||[]).filter((v,i,a)=>a.indexOf(v)===i);const labels=ids.map(opLabel).filter(Boolean);return labels.length?labels.join(' · '):'Назначение не задано'}
@@ -350,7 +356,7 @@ function projectPayload(){return{id:state.projectId||uid(),name:$('#projectName'
 function saveCurrentProject(){if(!state.results.length){toast('Сначала рассчитай маршрут');return}const p=projectPayload(),list=projects(),idx=list.findIndex(x=>x.id===p.id);if(idx>=0)list[idx]=p;else list.unshift(p);state.projectId=p.id;saveProjects(list.slice(0,120));toast('Проект сохранён локально')}
 ['saveProjectBtn','saveProjectTop'].forEach(id=>$('#'+id).addEventListener('click',saveCurrentProject));
 function openProject(id){const p=projects().find(x=>x.id===id);if(!p)return;state.projectId=p.id;state.machine=p.machine||state.machine;state.materialId=p.materialId;state.stock=p.stock;state.route=p.route||[];state.selectedToolIds=p.selectedToolIds||[];state.requirements=p.requirements||[];state.strategy=p.strategy||'work';state.coolant=p.coolant||'emulsion';state.rigidity=p.rigidity||'medium';state.results=p.results||[];$('#projectName').value=p.name;syncMachineUI();renderMaterials();syncStockUI();renderRoute();syncStrategy();renderRequirements();renderResults();navView('work');goStep(state.results.length?5:3);toast('Проект показан') }
-function deleteProject(id){if(!confirm('Удалить проект с этого устройства?'))return;saveProjects(projects().filter(x=>x.id!==id))}
+function deleteProject(id){if(!confirm('Удалить проект с этого устройства?'))return;markProjectSync(id,true);saveProjects(projects().filter(x=>x.id!==id));toast('Проект удалён и помечен для синхронизации')}
 function renderProjects(){const list=projects(),box=$('#projectsList');if(!list.length){box.innerHTML='<div class="empty-state glass"><b>Проектов пока нет</b><span>Рассчитай техпроцесс и сохрани его — он появится здесь.</span></div>';return}box.innerHTML=list.map(p=>{const m=D.materials.find(x=>x.id===p.materialId),s=p.stock,verified=(p.results||[]).reduce((a,g)=>a+g.passes.filter(x=>x.verified).length,0),total=(p.results||[]).reduce((a,g)=>a+g.passes.length,0);return `<article class="project-card glass"><div><h3>${esc(p.name)}</h3><p>${new Date(p.savedAt).toLocaleString('ru-RU')} · ${m?.name||p.materialId}</p><div class="project-meta"><span>Ø${s.diameter}${s.unit}</span><span>${s.length}${s.unit}</span><span>${p.route?.length||0} операций</span><span>${verified}/${total} проверено</span></div></div><div class="project-actions"><button data-open-project="${p.id}">Показать</button><button data-delete-project="${p.id}">Удалить</button></div></article>`}).join('');box.querySelectorAll('[data-open-project]').forEach(b=>b.addEventListener('click',()=>openProject(b.dataset.openProject)));box.querySelectorAll('[data-delete-project]').forEach(b=>b.addEventListener('click',()=>deleteProject(b.dataset.deleteProject)))}
 function esc(s){return String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
 
@@ -360,7 +366,7 @@ $('#resetDraft').addEventListener('click',newProject);$('#newProjectBtn').addEve
 
 function printProject(){if(!state.results.length){toast('Нет рассчитанного проекта');return}window.print()}
 ['printProjectBtn','printProjectTop'].forEach(id=>$('#'+id).addEventListener('click',printProject));
-function exportPng(){if(!state.results.length){toast('Нет рассчитанного проекта');return}const c=$('#exportCanvas'),ctx=c.getContext('2d'),w=c.width,h=c.height;const grad=ctx.createLinearGradient(0,0,w,h);grad.addColorStop(0,'#071624');grad.addColorStop(1,'#04080d');ctx.fillStyle=grad;ctx.fillRect(0,0,w,h);ctx.fillStyle='#6bbaff';ctx.font='700 26px system-ui';ctx.fillText('CNC COPILOT · FULL 3.0.2',70,80);ctx.fillStyle='#f7fbff';ctx.font='800 56px system-ui';ctx.fillText($('#projectName').value||'Техпроцесс',70,155);const s=stockMm(),m=material();ctx.fillStyle='#9db0c0';ctx.font='26px system-ui';ctx.fillText(`${state.machine.name} · ${m.name} · Ø${round(s.diameter,1)} × ${round(s.length,1)} мм`,70,210);let y=285;state.results.slice(0,9).forEach((g,i)=>{ctx.fillStyle='rgba(255,255,255,.07)';roundRect(ctx,60,y-38,1080,125,25);ctx.fill();ctx.fillStyle='#f7fbff';ctx.font='700 28px system-ui';ctx.fillText(`${String(i+1).padStart(2,'0')}  ${operation(g.opId).name}`,85,y);let x=85;g.passes.forEach((p,j)=>{ctx.fillStyle=j?'#86e2b2':'#8fcaff';ctx.font='600 20px system-ui';ctx.fillText(`${passLabel(p.pass)}: S ${p.rpm}  f ${p.f}  Vc ${p.vc}  ap ${p.ap}${p.verified?'  ✓':''}`,x,y+42+j*31)});y+=145});ctx.fillStyle='#71879a';ctx.font='18px system-ui';ctx.fillText('Стартовая технологическая рекомендация. Проверяй зажим, траекторию, нули и лимиты станка.',70,h-70);c.toBlob(blob=>{const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`CNC-${safeName($('#projectName').value)}.png`;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),500)},'image/png')}
+function exportPng(){if(!state.results.length){toast('Нет рассчитанного проекта');return}const c=$('#exportCanvas'),ctx=c.getContext('2d'),w=c.width,h=c.height;const grad=ctx.createLinearGradient(0,0,w,h);grad.addColorStop(0,'#071624');grad.addColorStop(1,'#04080d');ctx.fillStyle=grad;ctx.fillRect(0,0,w,h);ctx.fillStyle='#6bbaff';ctx.font='700 26px system-ui';ctx.fillText('CNC COPILOT · FULL 3.0.3',70,80);ctx.fillStyle='#f7fbff';ctx.font='800 56px system-ui';ctx.fillText($('#projectName').value||'Техпроцесс',70,155);const s=stockMm(),m=material();ctx.fillStyle='#9db0c0';ctx.font='26px system-ui';ctx.fillText(`${state.machine.name} · ${m.name} · Ø${round(s.diameter,1)} × ${round(s.length,1)} мм`,70,210);let y=285;state.results.slice(0,9).forEach((g,i)=>{ctx.fillStyle='rgba(255,255,255,.07)';roundRect(ctx,60,y-38,1080,125,25);ctx.fill();ctx.fillStyle='#f7fbff';ctx.font='700 28px system-ui';ctx.fillText(`${String(i+1).padStart(2,'0')}  ${operation(g.opId).name}`,85,y);let x=85;g.passes.forEach((p,j)=>{ctx.fillStyle=j?'#86e2b2':'#8fcaff';ctx.font='600 20px system-ui';ctx.fillText(`${passLabel(p.pass)}: S ${p.rpm}  f ${p.f}  Vc ${p.vc}  ap ${p.ap}${p.verified?'  ✓':''}`,x,y+42+j*31)});y+=145});ctx.fillStyle='#71879a';ctx.font='18px system-ui';ctx.fillText('Стартовая технологическая рекомендация. Проверяй зажим, траекторию, нули и лимиты станка.',70,h-70);c.toBlob(blob=>{const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`CNC-${safeName($('#projectName').value)}.png`;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),500)},'image/png')}
 function roundRect(ctx,x,y,w,h,r){ctx.beginPath();ctx.roundRect?ctx.roundRect(x,y,w,h,r):(ctx.rect(x,y,w,h));}
 function safeName(s){return String(s||'project').replace(/[^a-zA-Z0-9а-яА-ЯёЁ_-]+/g,'_').slice(0,60)}
 $('#exportPngBtn').addEventListener('click',exportPng);
@@ -375,7 +381,7 @@ function renderTools(){
   if(catalogHost)catalogHost.innerHTML=catalog.length?catalog.map(toolLibraryCardHtml).join(''):'<div class="empty-state glass tool-empty"><b>В каталоге ничего не найдено</b><span>Измени поиск или ISO-фильтр.</span></div>';
   const mineCount=$('#toolMineCount'),catalogCount=$('#toolCatalogCount');if(mineCount)mineCount.textContent=`${mine.length} позиций`;if(catalogCount)catalogCount.textContent=`${catalog.length} позиций`;
   $$('[data-tool-qty]').forEach(b=>b.addEventListener('click',()=>{const list=cupboardTools(),t=list.find(x=>x.id===b.dataset.toolQty);if(!t)return;t.quantity=Math.max(0,(t.quantity||0)+(+b.dataset.delta));saveCupboard(list);toast(`${t.insert}: ${t.quantity} шт.`)}));
-  $$('[data-tool-delete]').forEach(b=>b.addEventListener('click',()=>{const t=cupboardTools().find(x=>x.id===b.dataset.toolDelete);if(!t)return;if(!confirm(`Удалить ${t.insert} из шкафа?`))return;state.selectedToolIds=(state.selectedToolIds||[]).filter(x=>x!==t.id);saveCupboard(cupboardTools().filter(x=>x.id!==t.id));toast('Инструмент удалён')}));
+  $$('[data-tool-delete]').forEach(b=>b.addEventListener('click',()=>{const t=cupboardTools().find(x=>x.id===b.dataset.toolDelete);if(!t)return;if(!confirm(`Удалить ${t.insert} из шкафа?`))return;state.selectedToolIds=(state.selectedToolIds||[]).filter(x=>x!==t.id);markToolSync(t,true);saveCupboard(cupboardTools().filter(x=>x.id!==t.id));toast('Инструмент удалён и помечен для синхронизации')}));
 }
 $('#toolSearch')?.addEventListener('input',renderTools);$('#toolIsoFilter')?.addEventListener('change',renderTools);
 
@@ -449,12 +455,13 @@ function initOfflineStatus(){const label=$('#offlineLabel');if(label)label.textC
 function registerSW(){if('serviceWorker'in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('./service-worker.js',{updateViaCache:'none'}).catch(()=>{}))}
 window.CNC_APP={
   toast,
-  getSyncPayload(){return {version:'3.0.2',machine:store.get(KEYS.machine,state.machine),tools:store.get(KEYS.tools,[]),projects:store.get(KEYS.projects,[]),draft:store.get(KEYS.draft,null),updatedAt:new Date().toISOString()}},
+  getSyncPayload(){return {version:'3.0.3',machine:store.get(KEYS.machine,state.machine),tools:store.get(KEYS.tools,[]),projects:store.get(KEYS.projects,[]),draft:store.get(KEYS.draft,null),syncMarks:store.get(KEYS.syncMarks,{tools:{},projects:{}}),updatedAt:new Date().toISOString()}},
   applySyncPayload(payload={}){
     try{
       if(payload.machine){localStorage.setItem(KEYS.machine,JSON.stringify(payload.machine));state.machine=deep(payload.machine)}
       if(Array.isArray(payload.tools))localStorage.setItem(KEYS.tools,JSON.stringify(payload.tools));
       if(Array.isArray(payload.projects))localStorage.setItem(KEYS.projects,JSON.stringify(payload.projects));
+      if(payload.syncMarks&&typeof payload.syncMarks==='object')localStorage.setItem(KEYS.syncMarks,JSON.stringify(payload.syncMarks));
     }catch(e){console.warn('CNC sync apply failed',e)}
     syncMachineUI();renderTools();renderProjects();renderRoute();renderProcessToolTray();
   }
