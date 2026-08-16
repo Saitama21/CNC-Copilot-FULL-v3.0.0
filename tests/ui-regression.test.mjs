@@ -18,7 +18,7 @@ test('v3 exposes explicit local and online modes', () => {
 
 test('local core never routes API requests through service worker', () => {
   assert.match(sw, /pathname\.startsWith\('\/api\/'\)/);
-  assert.match(sw, /cnc-copilot-full-v303/);
+  assert.match(sw, /cnc-copilot-full-v304/);
 });
 
 test('AI scan is blocked until online mode is explicitly enabled', () => {
