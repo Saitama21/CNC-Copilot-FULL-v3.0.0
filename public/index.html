@@ -1,0 +1,320 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="theme-color" content="#071019" id="themeColorMeta">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="CNC Copilot">
+<meta name="format-detection" content="telephone=no">
+<title>CNC Copilot FULL v3.0.0</title>
+<script>
+(() => {
+  try {
+    const mode = localStorage.getItem('cncThemeMode') || 'system';
+    const effective = mode === 'system'
+      ? (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark')
+      : mode;
+    document.documentElement.dataset.themeMode = mode;
+    document.documentElement.dataset.theme = effective;
+  } catch {
+    document.documentElement.dataset.themeMode = 'system';
+    document.documentElement.dataset.theme = 'dark';
+  }
+})();
+</script>
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="icon" href="./icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png">
+<link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+<section id="v3AuthGate" class="v3-auth-gate">
+  <button id="v3AuthTheme" class="v3-auth-theme" type="button" aria-label="Переключить тему">◐</button>
+  <div class="v3-auth-card glass">
+    <div class="v3-cnc-stage" aria-hidden="true"><div class="v3-machine-glow"></div><div class="v3-machine-rail"></div><div class="v3-chuck"><i></i><i></i><i></i><b></b></div><div class="v3-workpiece"></div><div class="v3-cutter"></div><div class="v3-chip-field"><i></i><i></i><i></i><i></i><i></i></div><div class="v3-readout"><span>SPINDLE</span><b>2480</b><small>RPM</small></div></div>
+    <div class="v3-auth-content">
+      <div class="v3-brand"><div class="brand-cube">C</div><div><h1>CNC Copilot <sup>3.0</sup></h1><p>Local-first · Face ID · AI on demand</p></div></div>
+      <div class="v3-mode-tabs"><button class="active" data-v3-mode="local">Локально</button><button data-v3-mode="online">Онлайн</button></div>
+      <div id="v3LocalPane">
+        <p class="v3-auth-note">Основное ядро работает без интернета. После первой онлайн-привязки устройство можно разблокировать локально через Face ID / Passkey.</p>
+        <button id="v3LocalUnlock" class="primary v3-wide" type="button">◎ Face ID / Passkey</button>
+        <small id="v3LocalHint" class="v3-hint"></small>
+      </div>
+      <form id="v3OnlineForm" class="hidden">
+        <label class="field">Email<input id="v3Email" type="email" autocomplete="username webauthn" required></label>
+        <label class="field" id="v3PasswordLabel">Пароль<input id="v3Password" type="password" autocomplete="current-password" required></label>
+        <label class="v3-check"><input id="v3Remember" type="checkbox" checked><span>Запомнить устройство</span></label>
+        <div class="v3-auth-actions"><button id="v3PasswordLogin" class="primary" type="submit">Войти</button><button id="v3PasskeyLogin" class="soft-btn" type="button">◎ Face ID</button></div>
+        <button id="v3Register" class="ghost v3-wide" type="button">Создать аккаунт</button>
+      </form>
+      <div id="v3AuthMessage" class="v3-auth-message hidden"></div>
+    </div>
+  </div>
+</section>
+<div class="ambient a1"></div><div class="ambient a2"></div><div class="ambient a3"></div>
+<div id="toast" class="toast" role="status"></div>
+<div id="calcOverlay" class="calc-overlay hidden" aria-hidden="true">
+  <div class="calc-orb"><div class="orb-ring r1"></div><div class="orb-ring r2"></div><div class="orb-core">CNC</div></div>
+  <b id="calcOverlayTitle">Считаю техпроцесс…</b><span id="calcOverlaySub">Проверяю станок, инструмент и ограничения</span>
+  <div class="calc-digits"><span id="spinDigitA">0000</span><i>·</i><span id="spinDigitB">0.000</span></div>
+</div>
+
+<div id="scannerModal" class="scanner-modal hidden" aria-hidden="true">
+  <div class="scanner-sheet liquid-sheet">
+    <div class="scanner-head"><div><small>STRICT SCAN MODE</small><h2>Сканер пластин</h2><p>AI только распознаёт маркировку и формирует карточку. Решения по режимам он здесь не принимает.</p></div><button class="round-btn" id="closeScanner">×</button></div>
+    <div class="scanner-source-grid">
+      <label class="scan-source"><span>◉</span><b>Сделать фото</b><small>коробка / маркировка</small><input id="scannerCamera" type="file" accept="image/*" capture="environment" multiple></label>
+      <label class="scan-source"><span>▣</span><b>Выбрать из галереи</b><small>можно несколько фото</small><input id="scannerGallery" type="file" accept="image/*" multiple></label>
+    </div>
+    <div class="scan-preview" id="scanPreview"><div class="scan-empty"><span>⌾</span><b>Добавь фото коробки</b><small>Если коробка родная и маркировка целая — обычно достаточно этикетки. При сомнении добавь фото пластинки лицом и торцом.</small></div></div>
+    <div class="scan-status" id="scanStatus"><i></i><span>Готов к сканированию</span></div>
+    <button class="primary scan-run" id="runScanner">Распознать пластинку</button>
+    <div id="scanDuplicate" class="duplicate-banner hidden"></div>
+    <div class="scan-form hidden" id="scanForm">
+      <div class="fields two"><label class="field">Производитель<input id="scanManufacturer"></label><label class="field">Пластина<input id="scanInsert"></label><label class="field">Grade<input id="scanGrade"></label><label class="field">Стружколом<input id="scanBreaker"></label><label class="field">Радиус R, мм<input id="scanNose" type="number" step="0.05"></label><label class="field">Количество<input id="scanQuantity" type="number" min="1" value="1"></label><label class="field">Ячейка<input id="scanLocation" placeholder="A4 / B2"></label><label class="field">Державка / совместимость<input id="scanHolder" placeholder="если известно"></label></div>
+      <div class="iso-scan-row"><span>Материалы:</span><label><input type="checkbox" value="P">P</label><label><input type="checkbox" value="M">M</label><label><input type="checkbox" value="K">K</label><label><input type="checkbox" value="N">N</label><label><input type="checkbox" value="S">S</label><label><input type="checkbox" value="H">H</label></div>
+      <div class="operation-checks" id="scanOps"><span class="check-title">Для чего:</span><label><input type="checkbox" value="face"> Торцовка</label><label><input type="checkbox" value="od"> Наружка</label><label><input type="checkbox" value="bore"> Расточка</label><label><input type="checkbox" value="groove"> Канавка</label><label><input type="checkbox" value="part"> Отрезка</label><label><input type="checkbox" value="thread_ext"> Резьба нар.</label><label><input type="checkbox" value="thread_int"> Резьба внутр.</label><label><input type="checkbox" value="drill"> Сверление</label></div>
+      <label class="field">Что распознано / примечание<textarea id="scanEvidence" rows="3" readonly></textarea></label>
+      <div class="scan-save-actions"><button class="primary" id="saveScannedTool">Подтвердить и добавить</button><button class="ghost" id="scanAgain">Сканировать заново</button></div>
+    </div>
+  </div>
+</div>
+
+<div class="app-frame">
+  <aside class="side-nav glass desktop-only">
+    <div class="side-brand"><div class="brand-cube">C</div><div><strong>CNC Copilot</strong><small>FULL v3.0.0</small></div></div>
+    <nav>
+      <button class="active" data-view="work"><span>⌁</span><b>Напарник</b><small>техпроцесс</small></button>
+      <button data-view="tools"><span>◇</span><b>Инструмент</b><small>мой шкаф</small></button>
+      <button data-view="projects"><span>▣</span><b>Проекты</b><small>локальная база</small></button>
+      <button data-view="reference"><span>≋</span><b>Справочник</b><small>допуски / резьбы</small></button>
+      <button data-view="about"><span>ⓘ</span><b>О проекте</b><small>создатель</small></button>
+    </nav>
+    <div class="creator-mini" data-view="about"><small>СОЗДАТЕЛЬ</small><b>Ерошов Иван</b><span><i></i> offline core</span></div>
+  </aside>
+
+  <main class="main-shell">
+    <header class="topbar glass">
+      <div class="mobile-brand mobile-only"><div class="brand-cube">C</div><div><strong>CNC Copilot</strong><small>FULL v3.0.0</small></div></div>
+      <div class="top-status"><span class="status-dot"></span><b id="offlineLabel">LOCAL READY</b><small id="topMachine">CK52PT-Y · 828D</small></div>
+      <button class="v3-online-toggle" id="v3OnlineToggle" type="button"><span id="v3OnlineDot"></span><b id="v3OnlineText">ЛОКАЛЬНО</b></button>
+      <button class="round-btn theme-toggle" id="themeToggle" type="button" title="Тема: системная" aria-label="Переключить тему">◐</button>
+      <button class="round-btn" id="resetDraft" title="Новый проект">↻</button>
+    </header>
+
+    <section id="view-work" class="view active">
+      <div class="hero">
+        <div class="hero-copy"><p class="eyebrow">АВТОНОМНЫЙ CNC-НАПАРНИК</p><h1>От заготовки до проверенного режима.</h1><p>Собери технологический маршрут, получи режимы для каждой операции и подтверждай их реальным проходом — всё локально.</p></div>
+        <div class="hero-live">
+          <div class="hero-gauge glass" id="heroGauge">
+            <div class="gauge-ring" id="heroGaugeRing"><div><b id="heroRpm">0000</b><small>RPM</small></div></div>
+            <span id="heroGaugeCaption">0% · лимит 4000</span>
+          </div>
+          <div class="hero-sin glass" aria-label="Живые параметры SINUMERIK">
+            <div class="hero-sin-head"><span>SIEMENS · LIVE</span><b>828D</b></div>
+            <div class="hero-sin-grid">
+              <div><small>S / LIMS</small><b id="heroSinS">0000</b></div>
+              <div><small>F · G95</small><b id="heroSinF">0.000</b></div>
+              <div><small>Vc · G96</small><b id="heroSinVc">0.0</b></div>
+              <div><small>ap</small><b id="heroSinAp">0.000</b></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="wizard-wrap glass">
+        <div class="wizard-title"><span>ПРОЦЕСС</span><b id="stepCaption">Шаг 1 из 5</b></div>
+        <div class="stepper" id="stepper">
+          <button class="active" data-step="1"><i>1</i><span>Станок</span></button>
+          <button data-step="2"><i>2</i><span>Материал</span></button>
+          <button data-step="3"><i>3</i><span>Техпроцесс</span></button>
+          <button data-step="4"><i>4</i><span>Стратегия</span></button>
+          <button data-step="5"><i>5</i><span>Результат</span></button>
+        </div>
+      </div>
+
+      <section class="wizard-step active" data-step-panel="1">
+        <div class="section-head"><div><p class="eyebrow">01 · СТАНОК И ПРОЕКТ</p><h2>С чего начинаем</h2></div><span class="badge blue">локально</span></div>
+        <div class="grid-2">
+          <article class="card glass machine-card">
+            <div class="card-title"><div><small>МОЙ СТАНОК</small><h3 id="machineNameTitle">Tengyue CK52PT-Y</h3></div><span class="machine-led">● READY</span></div>
+            <div class="machine-visual"><div class="chuck"><i></i><i></i><i></i></div><div class="stock-cylinder"></div><div class="tool-slide"><i></i></div></div>
+            <div class="spec-row"><span>Стойка</span><b>SINUMERIK 828D / ShopTurn</b></div>
+            <div class="spec-row"><span>Шпиндель</span><b>A2-6 · Ø61 · 11 kW</b></div>
+            <div class="spec-row"><span>Револьвер</span><b>15 позиций · BMT40 / ER25</b></div>
+            <div class="spec-row"><span>Оси</span><b>X / Z / Y / C</b></div>
+          </article>
+          <article class="card glass">
+            <div class="card-title"><div><small>ПАРАМЕТРЫ</small><h3>Текущая установка</h3></div><span class="badge">editable</span></div>
+            <label class="field">Название проекта<input id="projectName" value="Новая деталь" maxlength="80"></label>
+            <div class="fields two"><label class="field">Макс. RPM станка<input id="machineMaxRpm" type="number" value="4000" min="100"></label><label class="field">Мощность, kW<input id="machineKw" type="number" value="11" min="1" step="0.1"></label></div>
+            <div class="fields two"><label class="field">Лимит текущего зажима, RPM<input id="setupMaxRpm" type="number" placeholder="например 2500"></label><label class="field">КПД привода<input id="machineEff" type="number" value="0.85" min="0.5" max="1" step="0.01"></label></div>
+            <details class="inline-details"><summary>Задняя бабка / OEM M-коды</summary><div class="fields two"><label class="field">M-код подвести<input id="tailstockMExtend" placeholder="если известен"></label><label class="field">M-код отвести<input id="tailstockMRetract" placeholder="если известен"></label></div><p>Если коды не подтверждены паспортом станка — оставь пустыми. Copilot всё равно даст ShopTurn-настройку и предупреждение.</p></details>
+            <button class="soft-btn" id="saveMachineProfile">Сохранить профиль станка</button>
+          </article>
+        </div>
+        <button class="primary next-step" data-next-step="2">Материал и заготовка <span>→</span></button>
+      </section>
+
+      <section class="wizard-step" data-step-panel="2">
+        <div class="section-head"><div><p class="eyebrow">02 · МАТЕРИАЛ</p><h2>Заготовка</h2></div><span class="badge" id="selectedIso">ISO M</span></div>
+        <article class="card glass">
+          <div class="material-grid" id="materialGrid"></div>
+          <div class="fields stock-fields">
+            <label class="field">Диаметр Ø<input id="stockDiameter" type="number" value="50" min="0.1" step="0.1"></label>
+            <label class="field">Длина<input id="stockLength" type="number" value="100" min="0.1" step="0.1"></label>
+            <label class="field">Единицы<select id="stockUnit"><option value="mm">мм</option><option value="cm">см</option></select></label>
+            <label class="field">Твёрдость HB<input id="stockHardness" type="number" value="180" min="1"></label>
+          </div>
+          <div class="material-note" id="materialNote"></div>
+          <div class="slenderness glass-inset" id="slendernessCard"></div>
+        </article>
+        <div class="step-actions"><button class="ghost" data-next-step="1">← Назад</button><button class="primary" data-next-step="3">Собрать техпроцесс <span>→</span></button></div>
+      </section>
+
+      <section class="wizard-step" data-step-panel="3">
+        <div class="section-head"><div><p class="eyebrow">03 · КОНСТРУКТОР ТЕХПРОЦЕССА</p><h2>Выбери все операции детали</h2></div><span class="badge blue" id="routeCount">0 операций</span></div>
+        <div class="active-req-strip glass-inset" id="activeReqStrip"><span>Требования чертежа</span><b>не заданы</b><button type="button" data-view="reference">Добавить</button></div>
+        <article class="card glass operation-card-shell">
+          <div class="operation-catalog" id="operationCatalog"></div>
+        </article>
+        <article class="card glass process-tools-card hidden" id="processToolsCard">
+          <div class="card-title"><div><small>МОЙ ИНСТРУМЕНТ ДЛЯ ЭТОЙ ДЕТАЛИ</small><h3>Мультивыбор из шкафа</h3></div><span class="badge blue" id="toolTrayCount">автоподбор</span></div>
+          <p class="muted compact">После выбора операций отметь сразу несколько пластин/сборок. Copilot распределит их по подходящим операциям; если ничего не отмечено — использует весь шкаф.</p>
+          <div class="process-tool-tray" id="processToolTray"></div>
+        </article>
+        <div class="route-head"><div><small>МАРШРУТ ОБРАБОТКИ</small><h3>Порядок операций</h3></div><span>перетаскивание заменено стрелками для надёжности на iPhone</span></div>
+        <div id="routeList" class="route-list"></div>
+        <div id="routeEmpty" class="empty-state glass"><b>Маршрут пока пуст</b><span>Добавь торцовку, точение, расточку, канавку, резьбу — сколько нужно.</span></div>
+        <div class="step-actions"><button class="ghost" data-next-step="2">← Назад</button><button class="primary" id="toStrategyBtn">Стратегия и проверка <span>→</span></button></div>
+      </section>
+
+      <section class="wizard-step" data-step-panel="4">
+        <div class="section-head"><div><p class="eyebrow">04 · СТРАТЕГИЯ</p><h2>Как считаем первый режим</h2></div><span class="badge">rule engine</span></div>
+        <div class="grid-2">
+          <article class="card glass">
+            <div class="card-title"><div><small>ЗАПАС ПО РЕЖИМУ</small><h3>Стратегия</h3></div></div>
+            <div class="strategy-switch" id="strategySwitch"><button data-strategy="safe"><i class="green-dot"></i><b>Безопасный</b><small>нижняя часть диапазона</small></button><button class="active" data-strategy="work"><i class="blue-dot"></i><b>Рабочий</b><small>баланс стойкости и времени</small></button><button data-strategy="productive"><i class="orange-dot"></i><b>Производительный</b><small>верх диапазона, если позволяет система</small></button></div>
+          </article>
+          <article class="card glass">
+            <div class="card-title"><div><small>УСЛОВИЯ</small><h3>Станок и резание</h3></div></div>
+            <div class="fields two"><label class="field">СОЖ<select id="coolant"><option value="emulsion">Эмульсия</option><option value="oil">Масло</option><option value="dry">Без СОЖ</option></select></label><label class="field">Жёсткость<select id="rigidity"><option value="high">Высокая</option><option value="medium" selected>Средняя</option><option value="low">Низкая / большой вылет</option></select></label></div>
+            <div class="preflight" id="preflight"></div>
+          </article>
+        </div>
+        <div class="step-actions"><button class="ghost" data-next-step="3">← Назад</button><button class="primary calculate-all" id="calculateAllBtn"><span class="calc-icon">⌁</span> Рассчитать весь маршрут</button></div>
+      </section>
+
+      <section class="wizard-step results-panel" data-step-panel="5">
+        <div class="section-head result-head"><div><p class="eyebrow">05 · РЕЖИМЫ РЕЗАНИЯ</p><h2>Весь техпроцесс — по операциям</h2><p id="resultSubtitle">—</p></div><div class="result-actions top"><button class="soft-btn small" id="saveProjectTop">Сохранить</button><button class="soft-btn small" id="printProjectTop">PDF</button></div></div>
+        <div class="result-summary glass" id="resultSummary"></div>
+        <div id="resultsList" class="results-list"></div>
+        <div class="final-actions glass">
+          <div><small>ЛОКАЛЬНАЯ БАЗА ОПЫТА</small><h3>Сохрани деталь целиком</h3><p>После подтверждения проходов Copilot будет показывать, какие операции уже проверены на станке.</p></div>
+          <div class="action-grid"><button class="primary" id="saveProjectBtn">Сохранить проект локально</button><button class="soft-btn" id="printProjectBtn">Сохранить / печать PDF</button><button class="soft-btn" id="exportPngBtn">Карточка PNG</button><button class="ghost" id="newProjectBtn">Новый проект</button></div>
+        </div>
+      </section>
+    </section>
+
+    <section id="view-tools" class="view">
+      <div class="page-hero"><p class="eyebrow">МОЙ ИНСТРУМЕНТ</p><h1>Умный шкаф</h1><p>Реальные пластинки, державки, фото, ячейки и количество. AI используется только здесь — строго для распознавания инструмента.</p></div>
+      <button class="scanner-teaser glass active-scanner" id="openScanner" type="button"><div class="scan-lens"><span></span>⌾</div><div><b>Сканер пластин · AI</b><span>Камера или галерея → строгое распознавание → проверка дублей → добавить в шкаф</span></div><span class="badge green">АКТИВЕН</span></button>
+      <div class="cupboard-toolbar glass-inset">
+        <label class="field grow">Поиск по шкафу и каталогу<input id="toolSearch" placeholder="WNMG, DCMT, PT9225N, A4…"></label>
+        <label class="field">ISO<select id="toolIsoFilter"><option value="all">Все</option><option>P</option><option>M</option><option>K</option><option>N</option><option>S</option><option>H</option></select></label>
+      </div>
+      <div class="tool-section-head"><div><small>ЛОКАЛЬНАЯ БАЗА</small><h2>Мой шкаф</h2></div><span class="badge green" id="toolMineCount">0 позиций</span></div>
+      <div id="toolLibraryMine" class="tool-library tool-library-mine"></div>
+      <div class="tool-section-head catalog-section-head"><div><small>ЗАПАСНОЙ ИСТОЧНИК</small><h2>Каталог</h2></div><span class="badge" id="toolCatalogCount">0 позиций</span></div>
+      <div id="toolLibraryCatalog" class="tool-library tool-library-catalog"></div>
+      <article class="card glass add-tool-card">
+        <div class="card-title"><div><small>ДОБАВИТЬ ВРУЧНУЮ</small><h3>Своя инструментальная сборка</h3></div><span class="badge blue">local</span></div>
+        <div class="fields two"><label class="field">Державка<input id="customHolder" placeholder="MWLNR2525M08"></label><label class="field">Пластина<input id="customInsert" placeholder="WNMG 080408"></label><label class="field">Grade<input id="customGrade" placeholder="2025 / PC9030 / PT9225N"></label><label class="field">Стружколом<input id="customBreaker" placeholder="MM / PM / HA / MTL"></label><label class="field">Радиус R, мм<input id="customNose" type="number" value="0.8" step="0.1"></label><label class="field">ISO группа<select id="customIso"><option>M</option><option>P</option><option>N</option><option>K</option><option>S</option><option>H</option></select></label><label class="field">Ячейка шкафа<input id="customLocation" placeholder="A4 / B2 / полка 1"></label><label class="field">Количество<input id="customQuantity" type="number" value="1" min="1" step="1"></label></div>
+        <div class="operation-checks" id="customOps"><span class="check-title">Для чего:</span><label><input type="checkbox" value="face" checked> Торцовка</label><label><input type="checkbox" value="od" checked> Наружка</label><label><input type="checkbox" value="bore"> Расточка</label><label><input type="checkbox" value="groove"> Канавка</label><label><input type="checkbox" value="part"> Отрезка</label><label><input type="checkbox" value="thread_ext"> Резьба нар.</label><label><input type="checkbox" value="thread_int"> Резьба внутр.</label><label><input type="checkbox" value="drill"> Сверление</label></div>
+        <div class="photo-pickers"><label class="soft-btn file-label">Фото лица<input id="customPhotoFront" type="file" accept="image/*"></label><label class="soft-btn file-label">Фото торца<input id="customPhotoSide" type="file" accept="image/*"></label></div>
+        <button class="primary" id="addCustomTool">Добавить в шкаф</button>
+      </article>
+    </section>
+
+    <section id="view-projects" class="view">
+      <div class="page-hero"><p class="eyebrow">ЛОКАЛЬНАЯ ПАМЯТЬ</p><h1>Проекты и проверенные режимы</h1><p>Хранятся только на этом устройстве. Интернет не нужен.</p></div>
+      <div class="project-toolbar"><button class="soft-btn" id="exportBackup">Экспорт резервной копии JSON</button><label class="soft-btn file-label">Импорт JSON<input id="importBackup" type="file" accept="application/json,.json"></label></div>
+      <div id="projectsList" class="projects-list"></div>
+    </section>
+
+    <section id="view-reference" class="view">
+      <div class="page-hero"><p class="eyebrow">ТРЕБОВАНИЯ ЧЕРТЕЖА</p><h1>Допуски, посадки и резьбы</h1><p>Справочник остаётся, но выбранные требования теперь входят в ядро техпроцесса и связываются с операциями.</p></div>
+      <article class="card glass requirement-builder">
+        <div class="card-title"><div><small>ДОБАВИТЬ К ДЕТАЛИ</small><h3>Критический размер / посадка / резьба</h3></div><span class="badge blue">ядро</span></div>
+        <div class="fields three"><label class="field">Тип<select id="reqType"><option value="tolerance">Допуск размера</option><option value="fit">Посадка</option><option value="thread">Резьба</option><option value="manual">Свободное требование</option></select></label><label class="field">Номинал, мм<input id="reqNominal" type="number" value="30" step="0.001"></label><label class="field">Операция<select id="reqOperation"><option value="all">Вся деталь / авто</option></select></label></div>
+        <div id="reqDynamic"></div>
+        <button class="primary" id="addRequirement">Добавить требование</button>
+        <div id="requirementsList" class="requirements-list"></div>
+      </article>
+      <div class="section-head reference-subhead"><div><p class="eyebrow">СПРАВОЧНИК</p><h2>Быстрый просмотр</h2></div><span class="badge">offline</span></div>
+      <div class="grid-2">
+        <article class="card glass">
+          <div class="card-title"><div><small>ISO 286 · IT</small><h3>Допуск размера</h3></div><span class="badge">1–500 мм</span></div>
+          <div class="fields three"><label class="field">Номинал, мм<input id="tolNom" type="number" value="30" step="0.001"></label><label class="field">Поле<select id="tolLetter"><option>H</option><option>h</option><option>JS</option><option>js</option></select></label><label class="field">Квалитет<select id="tolGrade"><option>5</option><option>6</option><option selected>7</option><option>8</option><option>9</option><option>10</option><option>11</option><option>12</option><option>13</option><option>14</option></select></label></div>
+          <button class="soft-btn" id="calcTolerance">Рассчитать</button><div class="reference-result" id="tolResult"></div>
+        </article>
+        <article class="card glass">
+          <div class="card-title"><div><small>ПОСАДКИ</small><h3>Типовые пары</h3></div><span class="badge">быстрый выбор</span></div>
+          <label class="field">Посадка<select id="fitPreset"></select></label><label class="field">Номинал, мм<input id="fitNom" type="number" value="30" step="0.001"></label><button class="soft-btn" id="calcFit">Показать допуски</button><div class="reference-result" id="fitResult"></div>
+        </article>
+        <article class="card glass">
+          <div class="card-title"><div><small>МЕТРИЧЕСКАЯ РЕЗЬБА</small><h3>Шаг и сверло</h3></div><span class="badge">M</span></div>
+          <div class="fields two"><label class="field">Резьба<select id="threadSelect"></select></label><label class="field">Шаг, мм<input id="threadPitchRef" type="number" step="0.05"></label></div><button class="soft-btn" id="calcThread">Рассчитать</button><div class="reference-result" id="threadResult"></div>
+        </article>
+        <article class="card glass">
+          <div class="card-title"><div><small>SINUMERIK 828D</small><h3>Задняя бабка в ShopTurn</h3></div><span class="badge blue">offline note</span></div>
+          <ol class="shopturn-steps"><li>Программа → <b>Разное</b> → <b>Установки</b>.</li><li>Параметр <b>Задняя бабка = Да</b>.</li><li>Задай <b>XRR</b> — плоскость отвода задней бабки.</li><li>Проверь точку смены инструмента и безопасный отвод.</li><li>OEM M-коды подвода/отвода используй только если подтверждены паспортом именно твоего станка.</li></ol>
+          <div class="notice warning">Copilot не подставляет неизвестный OEM M-код автоматически: у изготовителя станка эти функции могут быть переназначены.</div>
+        </article>
+      </div>
+    </section>
+
+    <section id="view-about" class="view">
+      <div class="page-hero"><p class="eyebrow">О ПРОЕКТЕ</p><h1>CNC Copilot FULL</h1><p>Автономный технологический напарник для токарной работы, а не просто калькулятор оборотов.</p></div>
+      <div class="grid-2 about-grid">
+        <article class="creator-card glass">
+          <div class="creator-avatar">ИЕ</div><div><small>СОЗДАТЕЛЬ</small><h2>Ерошов Иван</h2><p>Идея проекта: инструмент, техпроцесс, режимы и реальный опыт оператора в одном офлайн-приложении.</p><a id="authorMail" class="primary mail-link" href="#">Написать автору</a></div>
+        </article>
+        <article class="card glass">
+          <div class="card-title"><div><small>ОБРАТНАЯ СВЯЗЬ</small><h3>Что отправить автору?</h3></div></div>
+          <div class="feedback-author-grid"><button data-mail-type="bug">Сообщить об ошибке</button><button data-mail-type="idea">Предложить функцию</button><button data-mail-type="cut">Режим/материал не совпал</button><button data-mail-type="ui">Замечание по интерфейсу</button></div>
+          <p class="muted">Кнопка откроет почтовое приложение с готовой темой. Ядро CNC Copilot остаётся локальным; онлайн-функции включаются только вручную.</p>
+        </article>
+        <article class="card glass">
+          <div class="card-title"><div><small>ЯДРО</small><h3>Что работает без интернета</h3></div><span class="badge green">100% local</span></div>
+          <ul class="feature-list"><li>Материалы и диапазоны режимов</li><li>Инструментальный шкаф и подбор</li><li>Конструктор нескольких операций</li><li>Расчёт S / Vc / f / ap / мощности / Ra</li><li>Проверка лимитов CK52PT-Y</li><li>Диагностика первого прохода и пересчёт</li><li>Проекты и проверенные режимы</li><li>Справочник допусков и резьб</li><li>Экспорт PDF через системную печать и PNG-карточка</li></ul>
+        </article>
+        <article class="card glass">
+          <div class="card-title"><div><small>ВАЖНО</small><h3>Граница ответственности</h3></div><span class="badge amber">operator check</span></div>
+          <p>Расчёт — стартовая технологическая рекомендация. Перед запуском всегда проверяй зажим, траекторию, нули, коррекции, максимальные обороты патрона, направление шпинделя и документацию конкретного инструмента.</p>
+          <div class="version-block"><span>Версия</span><b>FULL 3.0.0</b><span>Режим</span><b>Local-first / Online on demand</b></div>
+        </article>
+      </div>
+    </section>
+
+    <footer class="app-footer"><span>CNC Copilot FULL v3.0.0</span><span>Ерошов Иван · Offline-first</span></footer>
+  </main>
+</div>
+
+<nav class="bottom-nav glass mobile-only">
+  <button class="active" data-view="work"><span>⌁</span><b>Напарник</b></button>
+  <button data-view="tools"><span>◇</span><b>Инструмент</b></button>
+  <button data-view="projects"><span>▣</span><b>Проекты</b></button>
+  <button data-view="reference"><span>≋</span><b>Справочник</b></button>
+  <button data-view="about"><span>ⓘ</span><b>О проекте</b></button>
+</nav>
+
+<canvas id="exportCanvas" class="hidden" width="1200" height="1600"></canvas>
+<div id="v3CloudPanel" class="v3-cloud-panel hidden" aria-hidden="true"><div class="v3-cloud-sheet glass"><div class="v3-cloud-head"><div><small>ONLINE FUNCTIONS</small><h2>Подключение</h2></div><button id="v3CloudClose" class="round-btn">×</button></div><div id="v3CloudBody"></div></div></div>
+<script src="./data.js"></script>
+<script src="./cloud.js"></script>
+<script src="./app.js"></script>
+</body>
+</html>

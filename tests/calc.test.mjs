@@ -1,0 +1,37 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { calculateMachining, OPERATIONS } from '../src/calc-engine.mjs';
+import { MATERIALS, findMaterial, matchMaterialCandidate } from '../src/materials.mjs';
+
+const base = { materialCode:'C45', operation:'turning', diameterMm:50, mode:'normal', cutType:'semi', maxRpm:4000 };
+
+test('catalog contains broad set of materials',()=>assert.ok(MATERIALS.length >= 60));
+test('finds C45',()=>assert.equal(findMaterial('C45').iso,'P'));
+test('case insensitive material lookup',()=>assert.equal(findMaterial('aisi304').code,'AISI304'));
+test('contains all requested operation cards',()=>assert.ok(Object.keys(OPERATIONS).length >= 14));
+test('turning produces rpm and mm/rev',()=>{const r=calculateMachining(base);assert.ok(r.spindleRpm>0);assert.ok(r.feedMmRev>0)});
+test('rpm follows cutting speed formula',()=>{const r=calculateMachining({...base,customVc:100});assert.equal(r.spindleRpm,637)});
+test('linear feed is rpm times feed/rev',()=>{const r=calculateMachining({...base,customVc:100,customFeed:.05});assert.ok(Math.abs(r.feedMmMin-r.spindleRpm*.05)<.1)});
+test('max rpm limit is enforced',()=>{const r=calculateMachining({...base,diameterMm:5,customVc:500,maxRpm:1200});assert.equal(r.spindleRpm,1200);assert.equal(r.rpmLimited,true)});
+test('threading feed equals pitch',()=>{const r=calculateMachining({...base,operation:'thread_external',threadPitchMm:1.5});assert.equal(r.feedMmRev,1.5)});
+test('threading requires pitch',()=>assert.throws(()=>calculateMachining({...base,operation:'thread_external'}),/шаг/i));
+test('boring is more conservative than turning',()=>{const a=calculateMachining(base),b=calculateMachining({...base,operation:'boring'});assert.ok(b.spindleRpm<a.spindleRpm);assert.ok(b.feedMmRev<a.feedMmRev)});
+test('parting is more conservative than turning',()=>{const a=calculateMachining(base),b=calculateMachining({...base,operation:'parting'});assert.ok(b.spindleRpm<a.spindleRpm);assert.ok(b.feedMmRev<a.feedMmRev)});
+test('roughing feed exceeds finishing feed',()=>{const a=calculateMachining({...base,cutType:'rough'}),b=calculateMachining({...base,cutType:'finish'});assert.ok(a.feedMmRev>b.feedMmRev)});
+test('roughing ap exceeds finishing ap',()=>{const a=calculateMachining({...base,cutType:'rough'}),b=calculateMachining({...base,cutType:'finish'});assert.ok(a.apMm>b.apMm)});
+test('productive mode exceeds reliable cutting speed',()=>{const a=calculateMachining({...base,mode:'reliable'}),b=calculateMachining({...base,mode:'productive'});assert.ok(b.vcRecommended>a.vcRecommended)});
+test('tool manufacturer Vc overrides generic range',()=>{const tool={vc_min:80,vc_max:100,feed_min:.1,feed_max:.2,ap_min:.5,ap_max:1.5,iso_groups:['P']};const r=calculateMachining({...base,tool});assert.ok(r.vcRecommended>=80&&r.vcRecommended<=110);assert.equal(r.source,'tool+material')});
+test('tool ISO mismatch produces warning',()=>{const tool={vc_min:80,vc_max:100,iso_groups:['M']};const r=calculateMachining({...base,tool});assert.ok(r.warnings.some(w=>w.includes('ISO P')))});
+test('generic calculation shows manufacturer warning',()=>{const r=calculateMachining(base);assert.ok(r.warnings.some(w=>w.includes('общие стартовые')))});
+test('custom vc and feed are respected',()=>{const r=calculateMachining({...base,customVc:123,customFeed:.077});assert.equal(r.vcRecommended,123);assert.equal(r.feedMmRev,.077)});
+test('rejects zero diameter',()=>assert.throws(()=>calculateMachining({...base,diameterMm:0}),/диаметр/i));
+test('rejects unknown material',()=>assert.throws(()=>calculateMachining({...base,materialCode:'NOPE'}),/Материал/i));
+test('rejects unknown operation',()=>assert.throws(()=>calculateMachining({...base,operation:'laser'}),/Операция/i));
+test('drilling accepts explicit tool diameter',()=>{const r=calculateMachining({...base,operation:'drilling',toolDiameterMm:10});assert.ok(r.feedMmRev>0)});
+test('custom ISO fallback materials exist',()=>assert.ok(['P','M','K','N','S','H'].every(g=>findMaterial(`ISO-${g}-CUSTOM`))));
+test('matches material from AI-style aliases',()=>assert.equal(matchMaterialCandidate(['Steel 20Х13', 'AISI 420']).code,'AISI420'));
+test('does not match an empty AI result',()=>assert.equal(matchMaterialCandidate([null,'']),null));
+test('calculates time for length and passes',()=>{const r=calculateMachining({...base,cutLengthMm:120,passes:3});assert.ok(r.cuttingTimeMin>0);assert.equal(r.passes,3)});
+test('returns SINUMERIK-friendly machine input',()=>{const r=calculateMachining(base);assert.equal(r.machineInput.feedMode,'G95');assert.match(r.machineInput.constantSurface,/G96 S\d+ LIMS=4000/)});
+test('estimates spindle power and machine load',()=>{const r=calculateMachining({...base,machinePowerKw:11});assert.ok(r.requiredSpindlePowerKw>0);assert.ok(r.powerLoadPercent>0)});
+test('preserves confirmed AI material label on ISO fallback',()=>{const r=calculateMachining({...base,materialCode:'ISO-P-CUSTOM',materialOverride:{code:'S355J2',name:'Сталь S355J2'}});assert.equal(r.material.code,'S355J2');assert.equal(r.material.name,'Сталь S355J2')});

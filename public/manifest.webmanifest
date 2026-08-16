@@ -1,0 +1,26 @@
+{
+  "name": "CNC Copilot FULL 3.0",
+  "short_name": "CNC Copilot",
+  "description": "Local-first CNC turning copilot with optional AI/sync and Passkey authentication",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#050a10",
+  "theme_color": "#071019",
+  "lang": "ru",
+  "icons": [
+    {
+      "src": "./icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "./icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
