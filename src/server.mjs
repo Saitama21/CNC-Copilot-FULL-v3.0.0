@@ -734,7 +734,7 @@ app.use(express.static(path.resolve(__dirname, '../public'), {
   etag: true,
   maxAge: production ? '1h' : 0,
   setHeaders(res, filePath) {
-    if (filePath.endsWith('service-worker.js') || filePath.endsWith('manifest.webmanifest') || filePath.endsWith('index.html') || filePath.endsWith('styles.css') || filePath.endsWith('app.js') || filePath.endsWith('cloud.js') || filePath.endsWith('data.js')) {
+    if (filePath.endsWith('service-worker.js') || filePath.includes('manifest') || filePath.includes('apple-touch-icon') || filePath.includes('pwa-icon') || filePath.includes('favicon') || filePath.endsWith('index.html') || filePath.endsWith('styles.css') || filePath.endsWith('app.js') || filePath.endsWith('cloud.js') || filePath.endsWith('data.js')) {
       res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
       res.setHeader('Pragma', 'no-cache');
       res.setHeader('Expires', '0');

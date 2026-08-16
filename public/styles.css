@@ -403,7 +403,7 @@ html[data-theme="light"] .toast{
   box-shadow:0 15px 38px rgba(48,78,107,.20);
 }
 
-/* ===== CNC Copilot FULL v3.0.5 — архитектура 2.3 + рабочий процесс 1.1.2 ===== */
+/* ===== CNC Copilot FULL v3.0.6 — архитектура 2.3 + рабочий процесс 1.1.2 ===== */
 :root{--v3-glass:rgba(255,255,255,.075);--v3-glass-strong:rgba(14,26,40,.84);--v3-line:rgba(255,255,255,.12);--v3-cloud:#62b1ff}
 html[data-theme="light"]{--v3-glass:rgba(255,255,255,.66);--v3-glass-strong:rgba(255,255,255,.90);--v3-line:rgba(70,99,126,.18);--v3-cloud:#087cff}
 .v3-auth-gate{position:fixed;inset:0;z-index:1000;display:grid;place-items:center;padding:calc(22px + env(safe-area-inset-top)) 16px calc(22px + env(safe-area-inset-bottom));overflow:auto;background:radial-gradient(circle at 50% 15%,rgba(42,151,241,.16),transparent 42%),linear-gradient(150deg,var(--bg),var(--bg2))}
@@ -428,7 +428,7 @@ html[data-theme="light"] .v3-online-toggle{background:rgba(255,255,255,.66);colo
 @media(max-width:767px){.v3-auth-card{border-radius:31px}.v3-cnc-stage{height:172px}.v3-auth-content{padding:17px 15px 20px}.v3-online-toggle{height:38px;padding:0 9px}.v3-online-toggle b{display:none}.topbar{gap:7px}}
 
 
-/* ===== v3.0.5 — единый язык и статусные индикаторы ===== */
+/* ===== v3.0.6 — единый язык и статусные индикаторы ===== */
 .machine-led,.badge,.v3-online-toggle{font-family:inherit;font-weight:800;letter-spacing:.075em}
 .machine-led{display:inline-flex;align-items:center;justify-content:center;min-height:28px;padding:6px 9px}
 .top-status b{font-weight:800;letter-spacing:.075em}

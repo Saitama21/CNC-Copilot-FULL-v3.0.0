@@ -7,7 +7,7 @@ const app = await readFile(new URL('../public/app.js', import.meta.url), 'utf8')
 const cloud = await readFile(new URL('../public/cloud.js', import.meta.url), 'utf8');
 const html = await readFile(new URL('../public/index.html', import.meta.url), 'utf8');
 const sw = await readFile(new URL('../public/service-worker.js', import.meta.url), 'utf8');
-const manifest = JSON.parse(await readFile(new URL('../public/manifest.webmanifest', import.meta.url), 'utf8'));
+const manifest = JSON.parse(await readFile(new URL('../public/manifest-v306.webmanifest', import.meta.url), 'utf8'));
 
 test('v3 exposes explicit local and online modes', () => {
   assert.match(html, /data-v3-mode="local"/);
@@ -18,7 +18,7 @@ test('v3 exposes explicit local and online modes', () => {
 
 test('local core never routes API requests through service worker', () => {
   assert.match(sw, /pathname\.startsWith\('\/api\/'\)/);
-  assert.match(sw, /cnc-copilot-full-v305/);
+  assert.match(sw, /cnc-copilot-full-v306/);
 });
 
 test('AI scan is blocked until online mode is explicitly enabled', () => {
@@ -108,4 +108,13 @@ test('новый расчёт не выбирает назначение инс�
 test('manifest identifies the 3.0 application', () => {
   assert.match(manifest.name, /3\.0/);
   assert.equal(manifest.display, 'standalone');
+});
+
+
+test('iOS home-screen icon uses versioned cache-busting URLs', () => {
+  assert.match(html, /apple-touch-icon-v306-180\.png/);
+  assert.match(html, /apple-touch-icon-precomposed/);
+  assert.match(html, /manifest-v306\.webmanifest/);
+  assert.equal(manifest.icons[0].src, './pwa-icon-v306-192.png');
+  assert.equal(manifest.icons[1].src, './pwa-icon-v306-512.png');
 });
