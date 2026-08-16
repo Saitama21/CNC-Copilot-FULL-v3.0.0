@@ -18,7 +18,7 @@ test('v3 exposes explicit local and online modes', () => {
 
 test('local core never routes API requests through service worker', () => {
   assert.match(sw, /pathname\.startsWith\('\/api\/'\)/);
-  assert.match(sw, /cnc-copilot-full-v301/);
+  assert.match(sw, /cnc-copilot-full-v302/);
 });
 
 test('AI scan is blocked until online mode is explicitly enabled', () => {
@@ -81,6 +81,15 @@ ${cloud}`;
   assert.match(app, /мм\/об/);
   assert.match(app, /м\/мин/);
   assert.equal(manifest.lang, 'ru');
+});
+
+
+test('новый расчёт не выбирает назначение инструмента автоматически', () => {
+  const customOps = html.match(/<div class="operation-checks" id="customOps">([\s\S]*?)<\/div>/)?.[1] || '';
+  assert.equal(/type="checkbox"[^>]*checked/.test(customOps), false, 'в ручной форме не должно быть предвыбранных операций');
+  assert.equal(app.includes("ops:ops.length?ops:['face','od']"), false, 'нельзя автоматически подставлять торцовку и наружку');
+  assert.match(app, /function clearToolPurposeChecks\(selector=/);
+  assert.match(app, /function newProject\(\)[\s\S]*clearToolPurposeChecks\('#customOps'\)[\s\S]*clearToolPurposeChecks\('#scanOps'\)/);
 });
 
 test('manifest identifies the 3.0 application', () => {
