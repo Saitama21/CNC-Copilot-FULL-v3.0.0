@@ -1,5 +1,5 @@
 {
-  "name": "CNC Copilot FULL 3.0.4",
+  "name": "CNC Copilot FULL 3.0.5",
   "short_name": "CNC Copilot",
   "description": "Автономный CNC-помощник для токарной обработки с ИИ и синхронизацией по запросу",
   "start_url": "./",
@@ -21,6 +21,12 @@
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
+    },
+    {
+      "src": "./icon-1024.png",
+      "sizes": "1024x1024",
+      "type": "image/png",
+      "purpose": "any"
     }
   ]
 }

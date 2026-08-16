@@ -69,7 +69,7 @@ window.CNC_DATA = (() => {
   };
 
   return {
-    version:'3.0.4 FULL',
+    version:'3.0.5 FULL',
     author:{name:'Ерошов Иван',email:'eroshovivan@gmail.com'},
     machineDefault:{id:'ck52pty',name:'Tengyue CK52PT-Y',control:'SINUMERIK 828D / ShopTurn',maxRpm:4000,spindleKw:11,efficiency:.85,spindle:'A2-6',bore:61,turret:'15 позиций · BMT40 / ER25',axes:'X / Z / Y / C',tailstock:true,setupMaxRpm:null,tailstockMExtend:'',tailstockMRetract:''},
     materials, operations, tools, threads, fitPresets, feedbackRules
