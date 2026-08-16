@@ -64,7 +64,7 @@ let client;
 
 function getClient() {
   if (!process.env.OPENAI_API_KEY) {
-    const error = new Error('AI-распознавание не настроено: добавьте OPENAI_API_KEY в Railway Variables.');
+    const error = new Error('ИИ-распознавание не настроено: добавьте OPENAI_API_KEY в переменные Railway.');
     error.code = 'AI_NOT_CONFIGURED';
     throw error;
   }
@@ -187,11 +187,11 @@ function outputText(response) {
   for (const item of response.output || []) {
     if (item.type !== 'message') continue;
     for (const part of item.content || []) {
-      if (part.type === 'refusal') throw new Error(part.refusal || 'AI отказался анализировать изображение.');
+      if (part.type === 'refusal') throw new Error(part.refusal || 'ИИ отказался анализировать изображение.');
       if (part.type === 'output_text' && part.text) return part.text;
     }
   }
-  throw new Error('AI не вернул результат распознавания.');
+  throw new Error('ИИ не вернул результат распознавания.');
 }
 
 export function aiStatus() {

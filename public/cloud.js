@@ -182,9 +182,10 @@ function setMode(on) {
   document.documentElement.dataset.onlineMode = connected ? 'online' : 'local';
   const dot = $('#v3OnlineDot'), text = $('#v3OnlineText');
   if (dot) dot.classList.toggle('on', connected);
-  if (text) text.textContent = connected ? 'ONLINE' : 'ЛОКАЛЬНО';
+  if (text) text.textContent = connected ? 'ОНЛАЙН' : 'ЛОКАЛЬНО';
   const label = $('#offlineLabel');
-  if (label) label.textContent = connected ? 'ONLINE FUNCTIONS · ACTIVE' : 'OFFLINE CORE · LOCAL';
+  if (label) label.textContent = connected ? 'ОНЛАЙН-ФУНКЦИИ · АКТИВНЫ' : 'ЛОКАЛЬНОЕ ЯДРО · ГОТОВО';
+  document.querySelector('.top-status .status-dot')?.classList.toggle('is-online', connected);
   renderCloudPanel();
 }
 function openApp() { authGate.classList.add('hidden'); setMode(false); }
@@ -231,7 +232,7 @@ async function onlineLogin(email, password) {
 }
 async function passkeyLogin() {
   const email = $('#v3Email').value.trim() || profile()?.email || '';
-  if (!email) return msg('Введите email.');
+  if (!email) return msg('Введите электронную почту.');
   try {
     const options = await api('/api/auth/passkey/login/options', { method: 'POST', body: JSON.stringify({ email }) });
     const credential = await navigator.credentials.get({ publicKey: requestOptions(options) });
@@ -247,11 +248,11 @@ async function passkeyLogin() {
 }
 async function register() {
   const email = $('#v3Email').value.trim(), password = $('#v3Password').value;
-  if (!email || !password) return msg('Введите email и пароль.');
+  if (!email || !password) return msg('Введите электронную почту и пароль.');
   try {
     const data = await api('/api/auth/register', { method: 'POST', body: JSON.stringify({ email, password, rememberDevice: true }) });
     await hydrateMe();
-    msg(`Аккаунт создан. Сохрани recovery-коды: ${data.recoveryCodes?.join(' · ') || 'открой настройки безопасности'}`, 'ok');
+    msg(`Аккаунт создан. Сохрани коды восстановления: ${data.recoveryCodes?.join(' · ') || 'открой настройки безопасности'}`, 'ok');
     openApp();
     await connectOnline();
   } catch (error) { msg(error.message); }
@@ -296,7 +297,7 @@ async function syncNow(silent = false) {
     const merged = merge(getLocal(), remote.payload || {});
     window.CNC_APP?.applySyncPayload?.(merged);
     const saved = await api('/api/sync', { method: 'PUT', body: JSON.stringify({ payload: merged, baseRevision: remote.revision || 0 }) });
-    if (!silent) window.CNC_APP?.toast?.(`Синхронизация готова · rev ${saved.revision}`);
+    if (!silent) window.CNC_APP?.toast?.(`Синхронизация готова · версия ${saved.revision}`);
     renderCloudPanel();
   } catch (error) {
     if (!silent) window.CNC_APP?.toast?.(`Синхронизация: ${error.message}`);
@@ -312,8 +313,8 @@ function renderCloudPanel() {
   if (!body) return;
   const p = profile();
   body.innerHTML = connected
-    ? `<div class="v3-cloud-status online"><span></span><div><b>Онлайн-функции включены</b><small>${user?.email || p?.email || ''}</small></div></div><button id="v3SyncNow" class="primary v3-wide">Синхронизировать сейчас</button><button id="v3AddPasskey" class="soft-btn v3-wide">◎ Добавить Face ID / Passkey</button><button id="v3Disconnect" class="ghost v3-wide">Вернуться в локальный режим</button><p class="v3-hint">AI и синхронизация обращаются к Railway только пока этот режим включён.</p>`
-    : `<div class="v3-cloud-status"><span></span><div><b>Локальный режим</b><small>Сетевых API-запросов нет</small></div></div><button id="v3Connect" class="primary v3-wide">Подключить онлайн-функции</button><p class="v3-hint">Расчёты, проекты, шкаф, справочники и экспорт остаются локальными.</p>`;
+    ? `<div class="v3-cloud-status online"><span></span><div><b>Онлайн-функции включены</b><small>${user?.email || p?.email || ''}</small></div></div><button id="v3SyncNow" class="primary v3-wide">Синхронизировать сейчас</button><button id="v3AddPasskey" class="soft-btn v3-wide">◎ Добавить Face ID / Passkey</button><button id="v3Disconnect" class="ghost v3-wide">Вернуться в локальный режим</button><p class="v3-hint">ИИ и синхронизация обращаются к Railway только пока этот режим включён.</p>`
+    : `<div class="v3-cloud-status"><span></span><div><b>Локальный режим</b><small>Сетевых запросов к серверу нет</small></div></div><button id="v3Connect" class="primary v3-wide">Подключить онлайн-функции</button><p class="v3-hint">Расчёты, проекты, шкаф, справочники и экспорт остаются локальными.</p>`;
   $('#v3Connect')?.addEventListener('click', () => connectOnline().catch(e => window.CNC_APP?.toast?.(e.message)));
   $('#v3Disconnect')?.addEventListener('click', disconnect);
   $('#v3SyncNow')?.addEventListener('click', () => syncNow(false));
@@ -371,7 +372,7 @@ $('#runScanner')?.addEventListener('click', event => {
   if (!connected) {
     event.preventDefault();
     event.stopImmediatePropagation();
-    window.CNC_APP?.toast?.('AI выключен. Нажми «ЛОКАЛЬНО» сверху и подключи онлайн-функции.');
+    window.CNC_APP?.toast?.('ИИ выключен. Нажми «ЛОКАЛЬНО» сверху и подключи онлайн-функции.');
   }
 }, true);
 window.addEventListener('cnc-local-data-changed', event => {

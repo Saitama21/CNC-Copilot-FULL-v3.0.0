@@ -167,11 +167,11 @@ app.post('/api/auth/register', async (req, res, next) => {
     const email = normalizeEmail(req.body.email);
     const password = String(req.body.password || '');
     const rememberDevice = Boolean(req.body.rememberDevice);
-    if (!validateEmail(email)) return jsonError(res, 400, 'Введите корректный email.');
+    if (!validateEmail(email)) return jsonError(res, 400, 'Введите корректный адрес электронной почты.');
     const passwordCheck = validatePassword(password);
     if (!passwordCheck.ok) return jsonError(res, 400, passwordCheck.message);
     const existing = await query('SELECT 1 FROM users WHERE email=$1', [email]);
-    if (existing.rowCount) return jsonError(res, 409, 'Аккаунт с таким email уже существует.');
+    if (existing.rowCount) return jsonError(res, 409, 'Аккаунт с такой электронной почтой уже существует.');
 
     const userId = crypto.randomUUID();
     const { salt, hash } = hashPassword(password);
@@ -198,7 +198,7 @@ app.post('/api/auth/login', async (req, res, next) => {
     const { rows } = await query('SELECT * FROM users WHERE email=$1', [email]);
     const user = rows[0];
     if (!user || !verifyPassword(req.body.password || '', user.password_salt, user.password_hash)) {
-      return jsonError(res, 401, 'Неверный email или пароль.');
+      return jsonError(res, 401, 'Неверная электронная почта или пароль.');
     }
     await createSession(req, res, user.id, Boolean(req.body.rememberDevice));
     return res.json({ user: { id: user.id, email: user.email } });
@@ -391,7 +391,7 @@ app.post('/api/auth/passkey/register/verify', auth, async (req, res, next) => {
 app.post('/api/auth/passkey/login/options', async (req, res, next) => {
   try {
     const email = normalizeEmail(req.body.email);
-    if (!validateEmail(email)) return jsonError(res, 400, 'Сначала укажите email аккаунта.');
+    if (!validateEmail(email)) return jsonError(res, 400, 'Сначала укажите электронную почту аккаунта.');
     if (!rateLimit(`passkey:${req.ip}:${email}`, 12, 60_000)) return jsonError(res, 429, 'Слишком много попыток.');
     const users = await query('SELECT id,email FROM users WHERE email=$1', [email]);
     const user = users.rows[0];
@@ -471,7 +471,7 @@ app.get('/api/ai/status', auth, (_req, res) => res.json(aiStatus()));
 
 app.post('/api/ai/recognize', auth, async (req, res, next) => {
   try {
-    if (!rateLimit(`ai:${req.user.id}`, 12, 60 * 60_000)) return jsonError(res, 429, 'Лимит AI-распознаваний исчерпан. Повторите через час.');
+    if (!rateLimit(`ai:${req.user.id}`, 12, 60 * 60_000)) return jsonError(res, 429, 'Лимит ИИ-распознаваний исчерпан. Повторите через час.');
     const result = await recognizeCncImage({
       kind: req.body.kind,
       imageDataUrl: req.body.imageDataUrl,
@@ -481,8 +481,8 @@ app.post('/api/ai/recognize', auth, async (req, res, next) => {
   } catch (error) {
     if (error.code === 'AI_NOT_CONFIGURED') return jsonError(res, 503, error.message);
     if (/изображен|тип распознавания/i.test(error.message || '')) return jsonError(res, 400, error.message);
-    if (error.status === 429) return jsonError(res, 429, 'AI временно перегружен или достигнут лимит проекта. Повторите позже.');
-    if (error.status === 401 || error.status === 403) return jsonError(res, 503, 'AI-сервис не настроен на сервере.');
+    if (error.status === 429) return jsonError(res, 429, 'ИИ временно перегружен или достигнут лимит проекта. Повторите позже.');
+    if (error.status === 401 || error.status === 403) return jsonError(res, 503, 'Сервис ИИ не настроен на сервере.');
     next(error);
   }
 });
@@ -515,7 +515,7 @@ app.put('/api/sync', auth, async (req, res, next) => {
 
 app.post('/api/scan-insert', auth, async (req, res, next) => {
   try {
-    if (!rateLimit(`ai:${req.user.id}`, 12, 60 * 60_000)) return jsonError(res, 429, 'Лимит AI-распознаваний исчерпан. Повторите через час.');
+    if (!rateLimit(`ai:${req.user.id}`, 12, 60 * 60_000)) return jsonError(res, 429, 'Лимит ИИ-распознаваний исчерпан. Повторите через час.');
     const images = Array.isArray(req.body?.images) ? req.body.images.slice(0, 4) : [];
     if (!images.length) return jsonError(res, 400, 'Добавьте хотя бы одно фото.');
     const result = await recognizeCncImage({ kind: 'tool', imageDataUrls: images, note: images.length > 1 ? `Оператор приложил ${images.length} фото одной и той же позиции. Основное фото — первое.` : '' });
@@ -544,8 +544,8 @@ app.post('/api/scan-insert', auth, async (req, res, next) => {
   } catch (error) {
     if (error.code === 'AI_NOT_CONFIGURED') return jsonError(res, 503, error.message);
     if (/изображен|тип распознавания/i.test(error.message || '')) return jsonError(res, 400, error.message);
-    if (error.status === 429) return jsonError(res, 429, 'AI временно перегружен или достигнут лимит проекта. Повторите позже.');
-    if (error.status === 401 || error.status === 403) return jsonError(res, 503, 'AI-сервис не настроен на сервере.');
+    if (error.status === 429) return jsonError(res, 429, 'ИИ временно перегружен или достигнут лимит проекта. Повторите позже.');
+    if (error.status === 401 || error.status === 403) return jsonError(res, 503, 'Сервис ИИ не настроен на сервере.');
     next(error);
   }
 });
@@ -728,7 +728,7 @@ app.get('/api/export', auth, async (req, res, next) => {
   } catch (error) { next(error); }
 });
 
-app.use('/api', (_req, res) => jsonError(res, 404, 'API route not found'));
+app.use('/api', (_req, res) => jsonError(res, 404, 'Маршрут API не найден'));
 
 app.use(express.static(path.resolve(__dirname, '../public'), {
   etag: true,
@@ -749,7 +749,7 @@ app.use((_req, res) => {
 app.use((error, _req, res, _next) => {
   console.error(error);
   if (String(error?.code) === '23505') return jsonError(res, 409, 'Такая запись уже существует.');
-  return jsonError(res, 500, production ? 'Внутренняя ошибка сервера.' : error.message || 'Server error');
+  return jsonError(res, 500, production ? 'Внутренняя ошибка сервера.' : error.message || 'Ошибка сервера');
 });
 
 await migrate();

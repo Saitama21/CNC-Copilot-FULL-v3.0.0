@@ -1,72 +1,72 @@
-# CNC Copilot FULL 3.0.0 — Architecture
+# CNC Copilot FULL 3.0.1 — архитектура
 
-## Principle: local core, cloud on demand
+## Принцип: локальное ядро, облако по запросу
 
-CNC Copilot 3.0 is served from Railway when online, but the installed PWA is designed to continue from its service-worker cache when Railway or the shop network is unavailable. The browser does not automatically enable cloud functions.
+CNC Copilot обслуживается через Railway, когда сеть доступна, но установленная PWA продолжает работу из кэша service worker при отсутствии Railway или интернета в цеху. Браузер не включает облачные функции автоматически.
 
 ```mermaid
 flowchart TD
-  PWA["Installed PWA / iPhone"] --> LOCAL["Local CNC core"]
-  LOCAL --> LS["Local storage: machine, cupboard, projects, draft"]
-  LOCAL --> CALC["Deterministic machining calculations"]
-  LOCAL --> EXPORT["Print / local export"]
+  PWA["Установленная PWA / iPhone"] --> LOCAL["Локальное CNC-ядро"]
+  LOCAL --> LS["Локальное хранилище: станок, шкаф, проекты, черновик"]
+  LOCAL --> CALC["Детерминированные расчёты обработки"]
+  LOCAL --> EXPORT["Печать / локальный экспорт"]
 
-  USER["User presses ONLINE"] --> API["Railway / Express API"]
-  API --> AUTH["Password + Passkey / WebAuthn"]
-  API --> DB["PostgreSQL sync state"]
-  API --> AI["OpenAI image recognition"]
-  AI --> CONFIRM["Operator confirmation"]
+  USER["Пользователь включает ОНЛАЙН"] --> API["Railway / Express API"]
+  API --> AUTH["Пароль + Passkey / WebAuthn"]
+  API --> DB["Состояние синхронизации PostgreSQL"]
+  API --> ИИ["Распознавание изображений OpenAI"]
+  ИИ --> CONFIRM["Подтверждение оператором"]
   CONFIRM --> LS
-  DB <--> SYNC["Explicit online session sync"]
+  DB <--> SYNC["Явная синхронизация онлайн-сессии"]
   SYNC <--> LS
 ```
 
-## Modes
+## Режимы
 
-### Local
-- Default after unlock.
-- No `/api/*` calls are made by the CNC workflow.
-- Calculations, material cards, operations, smart cupboard, projects, drawing requirements, references and the adaptive bottom Dock remain available.
-- AI scanning is blocked.
-- A previously enrolled Passkey can unlock the trusted device offline. The local profile stores the credential ID and its **public** COSE key; the private key remains inside the platform authenticator / secure hardware.
+### Локальный
+- Используется по умолчанию после разблокировки.
+- CNC-процесс не выполняет запросы `/api/*`.
+- Доступны расчёты, карточки материалов, операции, «Умный шкаф», проекты, требования чертежа, справочник и адаптивный нижний Dock.
+- ИИ-сканирование заблокировано.
+- Ранее зарегистрированный Passkey может разблокировать доверенное устройство без сети. Локальный профиль хранит идентификатор учётных данных и его **публичный** COSE-ключ; приватный ключ остаётся в защищённом аутентификаторе устройства.
 
-### Online
-- Enabled only by the user from the top status control.
-- Railway authentication/session becomes active.
-- AI scanner and PostgreSQL synchronization become available.
-- Local changes to machine/cupboard/projects are synchronized while this explicitly enabled session is active.
-- If connectivity disappears, the UI drops back to Local mode instead of blocking the CNC core.
+### Онлайн
+- Включается только пользователем через верхний индикатор состояния.
+- Активируется серверная сессия Railway.
+- Становятся доступны ИИ-сканер и синхронизация PostgreSQL.
+- Изменения станка, шкафа и проектов синхронизируются только пока явно включена онлайн-сессия.
+- При потере связи интерфейс возвращается в локальный режим и не блокирует CNC-ядро.
 
-## Offline Passkey verification
+## Офлайн-проверка Passkey
 
-The first trusted-device enrollment requires an online authenticated session. `/api/auth/me` returns the user's registered Passkey IDs plus their public COSE keys. Only those public values are cached locally.
+Первая привязка доверенного устройства требует онлайн-сессии. `/api/auth/me` возвращает идентификаторы зарегистрированных Passkey и их публичные COSE-ключи. Локально сохраняются только публичные данные.
 
-Offline unlock:
-1. Generates a fresh random WebAuthn challenge.
-2. Requests `userVerification: required`.
-3. Checks `type`, challenge and origin in `clientDataJSON`.
-4. Checks the RP ID hash and UP/UV flags in authenticator data.
-5. Verifies the assertion signature locally with Web Crypto.
-6. Supports the algorithms allowed by the server: ES256 / P-256 and RS256.
+При офлайн-разблокировке приложение:
+1. создаёт новый случайный challenge WebAuthn;
+2. запрашивает `userVerification: required`;
+3. проверяет `type`, challenge и origin в `clientDataJSON`;
+4. проверяет хэш RP ID и флаги UP/UV в данных аутентификатора;
+5. локально проверяет подпись через Web Crypto;
+6. поддерживает разрешённые сервером алгоритмы ES256 / P-256 и RS256.
 
-This does not copy or expose the private Passkey key.
+Приватный ключ Passkey не копируется и не раскрывается.
 
-## Sync model
+## Модель синхронизации
 
-`GET /api/sync` returns the current user payload and revision.
+`GET /api/sync` возвращает текущий пакет пользователя и его ревизию.
 
-`PUT /api/sync` stores:
-- machine profile
-- smart cupboard tools
-- projects
-- current draft
+`PUT /api/sync` хранит:
+- профиль станка;
+- инструменты «Умного шкафа»;
+- проекты;
+- текущий черновик.
 
-The current client merge keeps local versions for matching tool/project identities and adds remote-only records. The server increments a revision on every successful write.
+Клиент при объединении сохраняет локальные версии совпадающих инструментов/проектов и добавляет записи, существующие только на сервере. После успешной записи сервер увеличивает ревизию.
 
-## AI boundary
+## Граница ИИ
 
-AI is outside the deterministic calculation core. Up to four photos can be sent through `/api/scan-insert`. AI produces an editable structured draft; the operator confirms it before saving to the cupboard. AI does not calculate cutting parameters.
+ИИ находится вне детерминированного расчётного ядра. До четырёх фотографий можно отправить через `/api/scan-insert`. ИИ формирует редактируемый черновик карточки, а оператор подтверждает его перед сохранением в шкаф. ИИ не рассчитывает режимы резания.
 
-## PWA boundary
+## Граница PWA
 
-`service-worker.js` caches the application shell and never intercepts `/api/` requests. This keeps local assets available offline without pretending that cloud API responses are local data.
+`service-worker.js` кэширует оболочку приложения и никогда не перехватывает запросы `/api/`. Поэтому локальные ресурсы доступны без сети, а облачные ответы не маскируются под локальные данные.

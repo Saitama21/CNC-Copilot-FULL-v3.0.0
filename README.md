@@ -1,36 +1,46 @@
-# CNC Copilot FULL 3.0.0
+# CNC Copilot FULL 3.0.1
 
-Local-first CNC turning copilot. Version 3.0 combines the server/authentication architecture of the 2.3 branch with the five-step machining workflow, smart tool cupboard, project storage, drawing requirements, adaptive dock and calculation UI from FULL 1.1.2.
+Автономный CNC-помощник для токарной обработки с локальным ядром. Версия 3.0 объединяет серверную архитектуру и авторизацию ветки 2.3 с пятиэтапным техпроцессом, «Умным шкафом», проектами, требованиями чертежа, адаптивным Dock и расчётным интерфейсом FULL 1.1.2.
 
-## Operating model
+## Режим работы
 
-- **Local mode is the default.** Core calculations, machine profile, materials, tool cupboard, projects, tolerances, references, print/PDF flow and PWA shell work without API calls.
-- **Online functions are explicit.** The user presses the online control before Railway APIs are used.
-- **Online mode adds AI recognition and cloud sync.** Tool photos can be sent to the server AI endpoint and local machine/tool/project state can be synchronized to PostgreSQL.
-- **Passkey/Face ID is retained.** Online authentication uses the 2.3 WebAuthn server flow. After an online enrollment, the PWA stores the trusted account email, credential IDs and **public** Passkey keys so it can cryptographically verify a fresh WebAuthn assertion offline. Private Passkey keys never leave the authenticator.
-- **No automatic cloud dependency.** Losing network connectivity drops the app back to local mode; the CNC workflow remains available.
+- **Локальный режим используется по умолчанию.** Основные расчёты, профиль станка, материалы, «Умный шкаф», проекты, допуски, справочные данные, печать/PDF и оболочка PWA работают без обращений к API.
+- **Онлайн-функции включаются только вручную.** Пользователь сам включает онлайн-режим, и только после этого используются API Railway.
+- **Онлайн-режим добавляет ИИ-распознавание и облачную синхронизацию.** Фотографии инструмента можно отправлять на серверный модуль распознавания, а локальное состояние станка, инструмента и проектов — синхронизировать с PostgreSQL.
+- **Passkey / Face ID сохраняются.** Онлайн-авторизация использует серверный WebAuthn-процесс ветки 2.3. После первичной онлайн-регистрации PWA сохраняет доверенный адрес электронной почты, идентификаторы учётных данных и **публичные** ключи Passkey, чтобы в офлайн-режиме криптографически проверить новое подтверждение WebAuthn. Приватные ключи Passkey никогда не покидают аутентификатор.
+- **Автоматической зависимости от облака нет.** При потере сети приложение возвращается в локальный режим, а основной CNC-процесс остаётся доступным.
 
-## Railway variables
+## Переменные Railway
 
-Required for the full server mode:
+Для полноценного серверного режима нужны:
 
 - `DATABASE_URL`
-- `APP_ORIGIN` — exact public origin, for example `https://your-app.up.railway.app`
-- `RP_ID` — public hostname, for example `your-app.up.railway.app`
-- `OPENAI_API_KEY` — only required for AI recognition
-- `OPENAI_VISION_MODEL` — optional
+- `APP_ORIGIN` — точный публичный адрес, например `https://your-app.up.railway.app`
+- `RP_ID` — публичное имя хоста, например `your-app.up.railway.app`
+- `RP_NAME` — отображаемое имя сервиса Passkey
+- `SECURE_COOKIES` — для Railway рекомендуется `true`
+- `OPENAI_API_KEY` — требуется только для ИИ-распознавания
+- `OPENAI_VISION_MODEL` — необязательно
 
-Node.js 20+ is required.
+Требуется Node.js 20 или новее.
 
-## Run
+## Запуск
 
 ```bash
 npm ci
 npm start
 ```
 
-The server migrates `db/schema.sql` at startup and serves the PWA from `public/`.
+При запуске сервер применяет миграции из `db/schema.sql` и раздаёт PWA из папки `public/`.
 
-## Important safety boundary
+## Что изменено в 3.0.1
 
-The calculation engine provides starting machining recommendations. The operator must verify clamping, workholding, tool overhang, collision clearance, spindle/chuck limits, machine state and current manufacturer data before running a program.
+- пользовательский интерфейс полностью приведён к русскому языку;
+- статусы локального/онлайн-режима, готовности станка и редактирования унифицированы;
+- единицы `RPM`, `mm/rev`, `m/min`, `kW`, `µm` в пользовательском интерфейсе заменены на `об/мин`, `мм/об`, `м/мин`, `кВт`, `мкм`;
+- сообщения ИИ-сканера и серверные ошибки русифицированы;
+- PWA-кэш обновлён до 3.0.1, чтобы установленное приложение не удерживало старые подписи 3.0.0.
+
+## Важное ограничение по безопасности
+
+Расчётный модуль выдаёт стартовые рекомендации по режимам обработки. Перед запуском программы оператор обязан проверить зажим детали, закрепление, вылет инструмента, отсутствие столкновений, ограничения шпинделя и патрона, состояние станка и актуальные данные производителя.

@@ -18,13 +18,13 @@ test('v3 exposes explicit local and online modes', () => {
 
 test('local core never routes API requests through service worker', () => {
   assert.match(sw, /pathname\.startsWith\('\/api\/'\)/);
-  assert.match(sw, /cnc-copilot-full-v300/);
+  assert.match(sw, /cnc-copilot-full-v301/);
 });
 
 test('AI scan is blocked until online mode is explicitly enabled', () => {
   assert.match(cloud, /#runScanner/);
   assert.match(cloud, /if\s*\(\s*!connected\s*\)/);
-  assert.match(cloud, /AI выключен/);
+  assert.match(cloud, /ИИ выключен/);
 });
 
 test('passkey authentication and offline trusted-device unlock are present', () => {
@@ -61,6 +61,26 @@ test('material color cards and three theme modes remain present', () => {
   assert.match(html, /id="materialGrid"/);
   assert.match(app, /themeModes=\['system','light','dark'\]/);
   assert.match(css, /html\[data-theme="light"\]/);
+});
+
+
+
+test('пользовательские статусы и единицы измерения остаются на русском', () => {
+  const ui = `${html}
+${app}
+${cloud}`;
+  for (const forbidden of [
+    'ONLINE FUNCTIONS', 'OFFLINE CORE', 'LOCAL READY', '● READY',
+    '>editable<', '>local<', '>offline<', 'SAFE START',
+    'RPM limit', 'Power limit', 'AI выключен', 'AI endpoint',
+    '100% local', 'operator check', 'Local-first / Online on demand'
+  ]) assert.equal(ui.includes(forbidden), false, `найдена английская пользовательская строка: ${forbidden}`);
+  assert.match(html, /ЛОКАЛЬНОЕ ЯДРО · ГОТОВО/);
+  assert.match(cloud, /ОНЛАЙН-ФУНКЦИИ · АКТИВНЫ/);
+  assert.match(app, /об\/мин/);
+  assert.match(app, /мм\/об/);
+  assert.match(app, /м\/мин/);
+  assert.equal(manifest.lang, 'ru');
 });
 
 test('manifest identifies the 3.0 application', () => {

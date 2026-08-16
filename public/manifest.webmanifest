@@ -1,7 +1,7 @@
 {
-  "name": "CNC Copilot FULL 3.0",
+  "name": "CNC Copilot FULL 3.0.1",
   "short_name": "CNC Copilot",
-  "description": "Local-first CNC turning copilot with optional AI/sync and Passkey authentication",
+  "description": "Автономный CNC-помощник для токарной обработки с ИИ и синхронизацией по запросу",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

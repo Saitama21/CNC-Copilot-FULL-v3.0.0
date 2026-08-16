@@ -12,15 +12,15 @@ window.CNC_DATA = (() => {
   ];
 
   const operations = [
-    {id:'face',name:'Торцовка',icon:'⊙',supportsPass:true,defaultPass:'both',toolOps:['face'],description:'Выравнивание торца заготовки.',shopturn:'Turning → Face / Stock removal; подача обычно G95, для постоянной скорости — G96 с лимитом оборотов.'},
-    {id:'od',name:'Наружное точение',icon:'◒',supportsPass:true,defaultPass:'both',toolOps:['od','rough','finish'],description:'Наружный диаметр, ступени и цилиндрические поверхности.',shopturn:'Turning → Stock removal / Contour turning. Проверь X как диаметр, Z относительно нуля детали.'},
-    {id:'bore',name:'Внутренняя расточка',icon:'◎',supportsPass:true,defaultPass:'both',toolOps:['bore','finish'],description:'Обработка внутреннего диаметра.',shopturn:'Turning → Stock removal / Contour turning (internal). Обязательно проверь безопасный X при подводе.'},
-    {id:'groove',name:'Канавка',icon:'⌗',supportsPass:false,defaultPass:'single',toolOps:['groove'],description:'Наружная или внутренняя канавка.',shopturn:'Turning → Grooving. Укажи ширину резца/канавки, глубину и безопасный отвод.'},
-    {id:'part',name:'Отрезка',icon:'╱',supportsPass:false,defaultPass:'single',toolOps:['part'],description:'Отрезка детали от прутка.',shopturn:'Turning → Parting off. Нужны корректные X/Z, ширина пластины и стабильная СОЖ.'},
-    {id:'center',name:'Центровка',icon:'⌾',supportsPass:false,defaultPass:'single',toolOps:['center','drill'],description:'Центровочное отверстие перед задней бабкой или сверлением.',shopturn:'Drilling → Centering. Подготовь центр до подключения задней бабки.'},
-    {id:'drill',name:'Сверление',icon:'⇣',supportsPass:false,defaultPass:'single',toolOps:['drill'],description:'Осевое сверление.',shopturn:'Drilling → Drilling centric. Укажи глубину, подачу на оборот и стратегию стружколомания.'},
-    {id:'thread_ext',name:'Наружная резьба',icon:'≋',supportsPass:false,defaultPass:'single',toolOps:['thread_ext','thread'],description:'Наружная метрическая резьба.',shopturn:'Turning → Thread. Подача синхронна шагу резьбы; вводи шаг P и безопасное число проходов.'},
-    {id:'thread_int',name:'Внутренняя резьба',icon:'≣',supportsPass:false,defaultPass:'single',toolOps:['thread_int','thread'],description:'Внутренняя метрическая резьба.',shopturn:'Turning → Thread (internal). Проверь диаметр отверстия и безопасный выход резца.'}
+    {id:'face',name:'Торцовка',icon:'⊙',supportsPass:true,defaultPass:'both',toolOps:['face'],description:'Выравнивание торца заготовки.',shopturn:'Точение → торцевание / снятие припуска; подача обычно G95, для постоянной скорости — G96 с лимитом оборотов.'},
+    {id:'od',name:'Наружное точение',icon:'◒',supportsPass:true,defaultPass:'both',toolOps:['od','rough','finish'],description:'Наружный диаметр, ступени и цилиндрические поверхности.',shopturn:'Точение → снятие припуска / контурное точение. Проверь X как диаметр, Z относительно нуля детали.'},
+    {id:'bore',name:'Внутренняя расточка',icon:'◎',supportsPass:true,defaultPass:'both',toolOps:['bore','finish'],description:'Обработка внутреннего диаметра.',shopturn:'Точение → снятие припуска / внутреннее контурное точение. Обязательно проверь безопасный X при подводе.'},
+    {id:'groove',name:'Канавка',icon:'⌗',supportsPass:false,defaultPass:'single',toolOps:['groove'],description:'Наружная или внутренняя канавка.',shopturn:'Точение → канавка. Укажи ширину резца/канавки, глубину и безопасный отвод.'},
+    {id:'part',name:'Отрезка',icon:'╱',supportsPass:false,defaultPass:'single',toolOps:['part'],description:'Отрезка детали от прутка.',shopturn:'Точение → отрезка. Нужны корректные X/Z, ширина пластины и стабильная СОЖ.'},
+    {id:'center',name:'Центровка',icon:'⌾',supportsPass:false,defaultPass:'single',toolOps:['center','drill'],description:'Центровочное отверстие перед задней бабкой или сверлением.',shopturn:'Сверление → центровка. Подготовь центр до подключения задней бабки.'},
+    {id:'drill',name:'Сверление',icon:'⇣',supportsPass:false,defaultPass:'single',toolOps:['drill'],description:'Осевое сверление.',shopturn:'Сверление → осевое сверление. Укажи глубину, подачу на оборот и стратегию стружколомания.'},
+    {id:'thread_ext',name:'Наружная резьба',icon:'≋',supportsPass:false,defaultPass:'single',toolOps:['thread_ext','thread'],description:'Наружная метрическая резьба.',shopturn:'Точение → резьба. Подача синхронна шагу резьбы; вводи шаг P и безопасное число проходов.'},
+    {id:'thread_int',name:'Внутренняя резьба',icon:'≣',supportsPass:false,defaultPass:'single',toolOps:['thread_int','thread'],description:'Внутренняя метрическая резьба.',shopturn:'Точение → внутренняя резьба. Проверь диаметр отверстия и безопасный выход резца.'}
   ];
 
   const tools = [
@@ -64,12 +64,12 @@ window.CNC_DATA = (() => {
     chips:{label:'Стружка не ломается',icon:'↝',severity:'info',reason:'Поднимаем подачу в допустимом диапазоне, чтобы стружколом начал работать. Проверяем направление и СОЖ.',mult:{rpm:.98,f:1.12,ap:1.03}},
     heat:{label:'Перегрев / дым',icon:'♨',severity:'danger',reason:'Снижаем скорость резания и нагрузку. Отдельно проверь подачу СОЖ и состояние кромки.',mult:{rpm:.84,f:.94,ap:.88}},
     surface:{label:'Плохая поверхность',icon:'⌁',severity:'warn',reason:'Снижаем подачу и глубину. Проверь биение, вылет, радиус вершины и жёсткость.',mult:{rpm:.96,f:.82,ap:.78}},
-    wear:{label:'Быстрый износ пластины',icon:'◇',severity:'warn',reason:'Снижаем Vc и тепловую нагрузку. Если износ по кромке — проверь grade и СОЖ.',mult:{rpm:.88,f:.96,ap:.92}},
+    wear:{label:'Быстрый износ пластины',icon:'◇',severity:'warn',reason:'Снижаем Vc и тепловую нагрузку. Если износ по кромке — проверь марку сплава и СОЖ.',mult:{rpm:.88,f:.96,ap:.92}},
     load:{label:'Большая нагрузка шпинделя',icon:'⚡',severity:'danger',reason:'Сначала уменьшаем глубину, затем подачу. Обороты меняем минимально.',mult:{rpm:.97,f:.90,ap:.72}}
   };
 
   return {
-    version:'3.0.0 FULL',
+    version:'3.0.1 FULL',
     author:{name:'Ерошов Иван',email:'eroshovivan@gmail.com'},
     machineDefault:{id:'ck52pty',name:'Tengyue CK52PT-Y',control:'SINUMERIK 828D / ShopTurn',maxRpm:4000,spindleKw:11,efficiency:.85,spindle:'A2-6',bore:61,turret:'15 позиций · BMT40 / ER25',axes:'X / Z / Y / C',tailstock:true,setupMaxRpm:null,tailstockMExtend:'',tailstockMRetract:''},
     materials, operations, tools, threads, fitPresets, feedbackRules
