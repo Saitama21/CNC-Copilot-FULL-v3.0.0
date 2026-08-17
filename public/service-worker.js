@@ -1,4 +1,4 @@
-const CACHE='cnc-copilot-full-v306-20260817';
+const CACHE='cnc-copilot-full-v310-wip08-20260817';
 const CORE=['./','./index.html','./styles.css','./data.js','./cloud.js','./app.js','./manifest-v306.webmanifest','./favicon-v306-16.png','./favicon-v306-32.png','./favicon-v306.ico','./pwa-icon-v306-192.png','./pwa-icon-v306-512.png','./pwa-icon-v306-1024.png','./apple-touch-icon-v306-120.png','./apple-touch-icon-v306-152.png','./apple-touch-icon-v306-167.png','./apple-touch-icon-v306-180.png'];
 self.addEventListener('install',e=>e.waitUntil(caches.open(CACHE).then(c=>c.addAll(CORE)).then(()=>self.skipWaiting())));
 self.addEventListener('activate',e=>e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim())));

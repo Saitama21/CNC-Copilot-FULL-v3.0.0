@@ -101,7 +101,14 @@ export function calculateMachining(input) {
   if (input.customAp) ap = finitePositive(input.customAp, ap);
 
   let rpm = (vc * 1000) / (Math.PI * diameter);
-  const maxRpm = finitePositive(input.maxRpm, 4000);
+  const rpmConstraints = [
+    { key: 'machine', label: 'лимит станка', value: finitePositive(input.machineMaxRpm, finitePositive(input.maxRpm, 4000)) },
+    { key: 'hydraulic', label: input.hydraulicCylinderModel ? `гидроцилиндр ${input.hydraulicCylinderModel}` : 'гидроцилиндр', value: finitePositive(input.hydraulicCylinderMaxRpm) },
+    { key: 'motor', label: input.motorModel ? `двигатель ${input.motorModel}` : 'двигатель', value: finitePositive(input.motorMaxRpm) },
+    { key: 'setup', label: 'текущий патрон/кулачки', value: finitePositive(input.setupMaxRpm) },
+  ].filter(x => x.value).sort((a, b) => a.value - b.value);
+  const rpmLimiter = rpmConstraints[0] || { key: 'machine', label: 'лимит станка', value: 4000 };
+  const maxRpm = rpmLimiter.value;
   const rpmLimited = rpm > maxRpm;
   rpm = Math.min(rpm, maxRpm);
   const feedMmMin = rpm * feedPerRev;
@@ -118,7 +125,7 @@ export function calculateMachining(input) {
 
   const source = toolVc || toolFeed || toolAp ? 'tool+material' : 'generic-material';
   const warnings = [];
-  if (rpmLimited) warnings.push(`Обороты ограничены настройкой станка: ${Math.round(maxRpm)} rpm.`);
+  if (rpmLimited) warnings.push(`Обороты ограничены: ${rpmLimiter.label} · ${Math.round(maxRpm)} rpm.`);
   if (source === 'generic-material') warnings.push('Использованы общие стартовые режимы ISO-группы. Перед обработкой сверяйте данные производителя инструмента.');
   if (material.note) warnings.push(material.note);
   const toolGroups = Array.isArray(tool.iso_groups) ? tool.iso_groups : [];
@@ -157,6 +164,8 @@ export function calculateMachining(input) {
     powerLoadPercent: powerLoadPercent == null ? null : Number(powerLoadPercent.toFixed(0)),
     rpmLimited,
     maxRpm: Math.round(maxRpm),
+    rpmLimitSource: { key: rpmLimiter.key, label: rpmLimiter.label },
+    rpmConstraints: rpmConstraints.map(x => ({ key:x.key, label:x.label, value:Math.round(x.value) })),
     source,
     machineInput: {
       feedMode: 'G95',

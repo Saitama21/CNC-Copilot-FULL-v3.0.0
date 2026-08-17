@@ -60,7 +60,7 @@ CREATE TABLE IF NOT EXISTS user_settings (
   auto_lock_minutes INTEGER NOT NULL DEFAULT 15,
   units TEXT NOT NULL DEFAULT 'metric',
   machine_name TEXT NOT NULL DEFAULT 'CK52PT-Y · SINUMERIK 828D',
-  machine_power_kw NUMERIC NOT NULL DEFAULT 11,
+  machine_power_kw NUMERIC NOT NULL DEFAULT 17,
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
@@ -111,7 +111,7 @@ CREATE TABLE IF NOT EXISTS calculations (
 );
 CREATE INDEX IF NOT EXISTS idx_calculations_user_created ON calculations(user_id, created_at DESC);
 
-ALTER TABLE user_settings ADD COLUMN IF NOT EXISTS machine_power_kw NUMERIC NOT NULL DEFAULT 11;
+ALTER TABLE user_settings ADD COLUMN IF NOT EXISTS machine_power_kw NUMERIC NOT NULL DEFAULT 17;
 
 CREATE TABLE IF NOT EXISTS user_sync_state (
   user_id TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,

@@ -35,3 +35,19 @@ test('calculates time for length and passes',()=>{const r=calculateMachining({..
 test('returns SINUMERIK-friendly machine input',()=>{const r=calculateMachining(base);assert.equal(r.machineInput.feedMode,'G95');assert.match(r.machineInput.constantSurface,/G96 S\d+ LIMS=4000/)});
 test('estimates spindle power and machine load',()=>{const r=calculateMachining({...base,machinePowerKw:11});assert.ok(r.requiredSpindlePowerKw>0);assert.ok(r.powerLoadPercent>0)});
 test('preserves confirmed AI material label on ISO fallback',()=>{const r=calculateMachining({...base,materialCode:'ISO-P-CUSTOM',materialOverride:{code:'S355J2',name:'Сталь S355J2'}});assert.equal(r.material.code,'S355J2');assert.equal(r.material.name,'Сталь S355J2')});
+
+
+test('3.1 verified machine caps G96 by the lowest physical rpm constraint',()=>{
+  const r=calculateMachining({...base,diameterMm:5,customVc:500,machineMaxRpm:4000,hydraulicCylinderMaxRpm:6000,motorMaxRpm:8000,hydraulicCylinderModel:'BK-1552',motorModel:'1PH8137-1DD02-0CA1'});
+  assert.equal(r.spindleRpm,4000);
+  assert.equal(r.maxRpm,4000);
+  assert.equal(r.rpmLimitSource.key,'machine');
+  assert.match(r.machineInput.constantSurface,/LIMS=4000/);
+});
+
+test('3.1 current chuck limit overrides machine profile when it is lower',()=>{
+  const r=calculateMachining({...base,diameterMm:5,customVc:500,machineMaxRpm:4000,hydraulicCylinderMaxRpm:6000,motorMaxRpm:8000,setupMaxRpm:2500});
+  assert.equal(r.spindleRpm,2500);
+  assert.equal(r.rpmLimitSource.key,'setup');
+  assert.match(r.machineInput.constantSurface,/LIMS=2500/);
+});

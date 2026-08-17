@@ -1,3 +1,42 @@
+# CNC Copilot FULL 3.1.0 — WIP-05
+
+## Guided result cards at the machine
+- Final result is no longer rendered as one long stack of all operation cards.
+- Only the current operation card is shown; future operations stay locked until previous operations are confirmed on the machine.
+- Added operation progress rail with `проверено / сейчас / после предыдущей` states.
+- `Всё отлично` confirms the current pass. When every pass of the operation is confirmed, Copilot opens the next operation automatically.
+- Vibration, squeal, heat, poor surface, chip control, wear and spindle-load feedback recalculate only the current pass in place and require a new trial pass.
+- Previous verified operations remain available for review.
+- Result footer shows when the entire route has been confirmed.
+- Existing calculation formulas and WIP-04 machine envelope are preserved.
+
+
+## WIP-04 · подтверждённый профиль CK52PT-Y
+- Удалён старый placeholder 11 кВт из профиля станка.
+- Добавлены данные с шильдиков: Siemens SIMOTICS M 1PH8137-1DD02-0CA1, S1 17/19.5/22/24 кВт, nmax 8000 об/мин, Mmax 405 Н·м, SINAMICS S120 Combi, BK-1552 6000 об/мин / 45 kgf/cm².
+- Для автоматического расчёта нагрузки используется консервативная база 17 кВт; 24 кВт не трактуются как постоянная мощность шпинделя без подтверждённого передаточного отношения.
+- G96/LIMS теперь вычисляется как минимум из лимита станка, механических компонентов и текущего патрона/кулачков.
+- Экран проверки показывает, какой именно компонент ограничивает обороты.
+
+# CNC Copilot FULL 3.1.0 — WIP-03
+
+- Guided Workflow расширен с 5 до 8 отдельных экранов: станок → заготовка → операции → инструмент → размеры операций → стратегия → расчёт → результат.
+- Выбор операций и выбор инструмента больше не смешаны с настройкой геометрии.
+- Каждая операция на шаге размеров показывается отдельно; переход к следующей блокируется, пока текущая геометрия не валидна.
+- Добавлена очередь операций с индикаторами готовности и возможностью вернуться к нужной операции.
+- Добавлено явное условие «Задняя бабка»: Авто / Подпереть / Без бабки; режим сохраняется в проекте и влияет на рекомендацию.
+- Твёрдость HB сделана действительно необязательной: для перехода достаточно материала, фактического Ø и длины; при пустом HB расчёт использует справочное значение материала.
+- Расчёт вынесен в отдельный экран предварительной проверки.
+- Результат остаётся на отдельном шаге с пооперационной диагностикой первого прохода.
+
+# 3.1.0 WIP · Guided Workflow
+
+- Новый проект: пользовательские поля стартуют пустыми, без демо Ø50 / L100 / HB.
+- Ручное добавление инструмента: реальные значения не подставляются, примеры только placeholder.
+- Порядок операций: «Сырьё / было» → «По чертежу / должно стать»; целевые размеры больше не генерируются фиктивно.
+- Геометрия операций валидируется до перехода к стратегии; наружное точение и расточка проверяют направление изменения диаметра.
+- Для последовательных наружных операций исходный Ø автоматически наследуется из предыдущего целевого Ø, пока пользователь не переопределил его вручную.
+
 # История изменений
 
 ## 3.0.6
@@ -118,3 +157,29 @@
 - Настоящие PDF-отчёты, совместимые с iPhone Share/Files.
 - Управление Passkeys, сессиями, паролем и кодами восстановления.
 - Улучшенная блокировка, светлая/тёмная тема, PWA и адаптивность iPhone.
+
+## 3.1.0 WIP-06 — Guided Workflow visual polish
+- Added directional stage transitions and an animated 8-step progress line without touching calculation logic.
+- Active step auto-centers in the mobile stepper and exposes `aria-current` for accessibility.
+- Material selection now progressively reveals the actual stock fields; no stock form is shown as if it were already active before material selection.
+- Operation catalog enters as a lightweight cascade; single-operation setup gets a focused-card transition.
+- Mobile step controls use a blurred sticky action tray so the next action stays thumb-reachable.
+- Added `prefers-reduced-motion` handling; all data and controls remain available without animation.
+
+
+## WIP-07 · End-to-end scenario audit
+- Шаг 5 теперь блокирует будущие операции, пока предыдущая геометрия не заполнена.
+- Ø/припуск превращаются в физический план съёма: Copilot считает количество черновых проходов и реальный ap на проход.
+- При корректировке режима у станка число проходов пересчитывается вместе с S/f/ap.
+- В операции «Черновая + чистовая» чистовой проход нельзя подтвердить раньше чернового.
+- Перед расчётом появился краткий маршрут: геометрия + фактически рекомендуемый инструмент по каждой операции.
+- Если задняя бабка планируется без центровки, preflight явно предупреждает оператора.
+
+## WIP-08 · Pass-specific tool assignment
+- Для операций «Черновая + чистовая» инструмент теперь назначается отдельно на черновой и чистовой проход.
+- Черновой инструмент больше никогда не подменяет чистовой только из-за общего `toolId`.
+- Автоподбор фильтрует инструмент по ISO, операции и назначению прохода; если в выбранном наборе нет чистового инструмента, разрешён fallback только к совместимому инструменту из шкафа/каталога.
+- Шаг «Размеры операций» блокирует переход дальше, если для любого требуемого прохода нет совместимой сборки.
+- В ручном добавлении и после ИИ-сканирования оператор явно подтверждает назначение пластины: черновая / чистовая / оба режима.
+- Старые локальные инструменты из WIP-07 и более ранних версий не получают доверие к «черновая + чистовая» автоматически: в шкафу появился быстрый профиль «Черн. / Чист. / Оба».
+- Сохранённые маршруты со старым единым `toolId` мигрируют безопасно: инструмент переносится только в тот проход, для которого он действительно совместим.

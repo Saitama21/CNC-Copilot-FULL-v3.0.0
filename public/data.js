@@ -69,9 +69,16 @@ window.CNC_DATA = (() => {
   };
 
   return {
-    version:'3.0.6 FULL',
+    version:'3.1.0 FULL · Guided Workflow',
     author:{name:'Ерошов Иван',email:'eroshovivan@gmail.com'},
-    machineDefault:{id:'ck52pty',name:'Tengyue CK52PT-Y',control:'SINUMERIK 828D / ShopTurn',maxRpm:4000,spindleKw:11,efficiency:.85,spindle:'A2-6',bore:61,turret:'15 позиций · BMT40 / ER25',axes:'X / Z / Y / C',tailstock:true,setupMaxRpm:null,tailstockMExtend:'',tailstockMRetract:''},
+    machineDefault:{
+      id:'ck52pty',name:'Tengyue CK52PT-Y',control:'SINUMERIK 828D / ShopTurn',profileRevision:4,verifiedProfile:true,profileSource:'Шильдики установленного оборудования',
+      maxRpm:4000,spindleKw:17,efficiency:.85,spindle:'A2-6',bore:61,turret:'15 позиций · BMT40 / ER25',axes:'X / Z / Y / C',tailstock:true,setupMaxRpm:null,tailstockMExtend:'',tailstockMRetract:'',
+      motor:{family:'Siemens SIMOTICS M',model:'1PH8137-1DD02-0CA1',maxRpm:8000,maxTorqueNm:405,maxCurrentA:108,ip:'IP55',thermal:'PT1000',massKg:139,s1:[{v:307,a:43,kw:17,rpm:1000},{v:350,a:43,kw:19.5,rpm:1150},{v:404,a:42,kw:22,rpm:1350},{v:447,a:41,kw:24,rpm:1500}]},
+      drive:{system:'Siemens SINAMICS S120 Combi',lineReactorModel:'6SL3100-0EE22-0AA0',lineReactorClassKw:20,extraMotorModule:'6SL3420-1TE21-0AA1',extraMotorModuleA:9},
+      chuckCylinder:{model:'BK-1552',maxRpm:6000,maxPressureKgfCm2:45,maxPressureBar:44.1},
+      powerPolicy:'conservative-s1',powerNote:'Для автоматического расчёта нагрузки используется консервативная непрерывная база 17 кВт. Шильдик двигателя содержит точки S1 до 24 кВт; без подтверждённого передаточного отношения Copilot не превращает 24 кВт в постоянную мощность на шпинделе.'
+    },
     materials, operations, tools, threads, fitPresets, feedbackRules
   };
 })();

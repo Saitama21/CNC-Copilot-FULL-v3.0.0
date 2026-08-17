@@ -704,7 +704,7 @@ app.put('/api/settings', auth, async (req, res, next) => {
     const maxRpm = Math.min(100000, Math.max(100, Number(req.body.maxRpm || 4000)));
     const autoLock = Math.min(240, Math.max(1, Number(req.body.autoLockMinutes || 15)));
     const machineName = String(req.body.machineName || 'CK52PT-Y · SINUMERIK 828D').slice(0, 100);
-    const machinePowerKw = Math.min(500, Math.max(0.5, Number(req.body.machinePowerKw || 11)));
+    const machinePowerKw = Math.min(500, Math.max(0.5, Number(req.body.machinePowerKw || 17)));
     const result = await query(
       `INSERT INTO user_settings(user_id,theme,max_rpm,auto_lock_minutes,machine_name,machine_power_kw,updated_at)
        VALUES($1,$2,$3,$4,$5,$6,NOW())
