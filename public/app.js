@@ -50,7 +50,6 @@ function initAdaptiveDock(){
   };
   window.addEventListener('scroll',()=>{if(!ticking){ticking=true;requestAnimationFrame(update)}},{passive:true});
   dock.addEventListener('pointerdown',show,{passive:true});
-  window.visualViewport?.addEventListener('resize',show,{passive:true});
 }
 // One-time, non-destructive migration from FULL v1.0.1 storage keys.
 try{
