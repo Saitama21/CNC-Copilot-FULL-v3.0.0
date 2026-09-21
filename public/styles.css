@@ -588,3 +588,22 @@ html[data-theme="light"] .tailstock-switch button b,html[data-theme="light"] .ro
 .tool-pass-profile.need{background:rgba(238,174,74,.055);border-color:rgba(238,174,74,.20)}
 .tool-pass-profile small{flex:1 0 100%;font-size:7px;color:var(--muted)}
 .tool-pass-profile.need small{color:#d9b471}.tool-pass-profile button{border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.035);color:#a9bbc7;border-radius:9px;padding:5px 8px;font-size:8px}
+
+
+/* UI_CONTRACT_DOCK_V1 — Safari-independent dock */
+
+:root{--dock-bottom:7px;--dock-width:95%;--dock-height:68px}
+@media (min-width:390px) and (max-width:430px){:root{--dock-bottom:2px;--dock-width:87%;--dock-height:68px}}
+@media(max-width:767px){
+  .bottom-nav,
+  body > .bottom-nav.glass{
+    position:fixed!important;
+    left:50%!important;
+    right:auto!important;
+    bottom:var(--dock-bottom)!important;
+    width:min(var(--dock-width),640px)!important;
+    height:var(--dock-height)!important;
+    padding:7px!important;
+    transform:translateX(-50%)!important;
+  }
+}
