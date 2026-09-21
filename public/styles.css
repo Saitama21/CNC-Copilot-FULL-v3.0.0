@@ -607,3 +607,15 @@ html[data-theme="light"] .tailstock-switch button b,html[data-theme="light"] .ro
     transform:translateX(-50%)!important;
   }
 }
+
+
+/* UI_CONTRACT_DOCK_DIRECT_V1 — explicit selector for CI and future overrides */
+@media(max-width:767px){
+  .bottom-nav{
+    position:fixed!important;
+    left:50%!important;
+    right:auto!important;
+    bottom:var(--dock-bottom)!important;
+    transform:translateX(-50%)!important;
+  }
+}
